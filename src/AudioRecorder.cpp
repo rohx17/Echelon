@@ -1,10 +1,183 @@
 #include <Arduino.h>
+#include "AudioRecorder.h"
 
-const int micPin1 = A0;
-const int micPin2 = A1;
-const int SAMPLE_RATE = 16000;
-const int BUFFER_SIZE = 16000; // 1 second buffer
-const float PITCH_FACTOR = 1.5; // 0.5 = octave down, 1.0 = normal, 2.0 = octave up
 
+// Make variables accessible
+int16_t ringBuffer1[BUFFER_SIZE];
+int16_t ringBuffer2[BUFFER_SIZE];
+int16_t pitchBuffer1[BUFFER_SIZE];
+int16_t pitchBuffer2[BUFFER_SIZE];
+
+volatile int writeIndex = 0;
+volatile bool bufferReady = false;
+volatile bool shouldRecord = false;
+volatile bool dataReadyToConsume = false;  
+
+void startRecording();
+void stopRecording();
+void applyPitchShift();
+void applySimpleDownsample();
+void sendBufferData();
+
+void MIC_setup() {
+  
+  analogReadResolution(12);
+  analogSetAttenuation(ADC_11db);
+  
+  pinMode(micPin1, INPUT);
+  pinMode(micPin2, INPUT);
+  
+  while (!Serial) delay(10);
+  delay(2000);
+  Serial.println("DUAL MIC RING BUFFER READY");
+  Serial.println("Send 'R' to record 1 second, 'S' to stop");
+  Serial.print("Pitch factor: ");
+  Serial.println(PITCH_FACTOR);
+}
+
+bool MIC_loop() {
+  // Check for commands from Python
+  if (Serial.available() > 0) {
+    char command = Serial.read();
+    if (command == 'R' || command == 'r') {
+      startRecording();
+    } else if (command == 'S' || command == 's') {
+      stopRecording();
+    }
+  }
+  
+  // If recording, fill ring buffer
+  if (shouldRecord) {
+    unsigned long startTime = micros();
+    
+    for (int i = 0; i < 100; i++) { // Read 100 samples at a time
+      if (writeIndex >= BUFFER_SIZE) {
+        bufferReady = true;
+        shouldRecord = false;
+        writeIndex = 0;
+        break;
+      }
+      
+      // Read both mics
+      ringBuffer1[writeIndex] = (int16_t)((analogRead(micPin1) - 2048) * 16);
+      ringBuffer2[writeIndex] = (int16_t)((analogRead(micPin2) - 2048) * 16);
+      writeIndex++;
+      
+      // Timing for 16kHz
+      while (micros() - startTime < (i + 1) * 62.5) {}
+    }
+    
+    // If buffer is full, process and send data
+    if (bufferReady) {
+      applyPitchShift();
+      sendBufferData();
+      bufferReady = false;
+      dataReadyToConsume = true; 
+    }
+    
+  }
+  return dataReadyToConsume;
+}
+
+
+void acknowledgeData() {
+  // Call this after you've used the pitch buffer data
+  dataReadyToConsume = false;
+}
+
+void startRecording() {
+  writeIndex = 0;
+  bufferReady = false;
+  shouldRecord = true;
+  Serial.println("RECORDING STARTED - Filling 1 second buffer...");
+}
+
+void stopRecording() {
+  shouldRecord = false;
+  Serial.println("RECORDING STOPPED");
+}
+
+// Simple pitch shifting using linear interpolation
+void applyPitchShift() {
+  int outputSamples = (int)(BUFFER_SIZE * PITCH_FACTOR);
+  if (outputSamples > BUFFER_SIZE) outputSamples = BUFFER_SIZE;
+  
+  for (int i = 0; i < outputSamples; i++) {
+    // Calculate the source position with floating point precision
+    float srcPos = i / PITCH_FACTOR;
+    int srcIndex = (int)srcPos;
+    float frac = srcPos - srcIndex;
+    
+    if (srcIndex < BUFFER_SIZE - 1) {
+      // Linear interpolation for mic 1
+      pitchBuffer1[i] = (int16_t)(
+        ringBuffer1[srcIndex] * (1.0f - frac) + 
+        ringBuffer1[srcIndex + 1] * frac
+      );
+      
+      // Linear interpolation for mic 2
+      pitchBuffer2[i] = (int16_t)(
+        ringBuffer2[srcIndex] * (1.0f - frac) + 
+        ringBuffer2[srcIndex + 1] * frac
+      );
+    } else if (srcIndex < BUFFER_SIZE) {
+      // Last sample
+      pitchBuffer1[i] = ringBuffer1[srcIndex];
+      pitchBuffer2[i] = ringBuffer2[srcIndex];
+    } else {
+      // Pad with silence if needed
+      pitchBuffer1[i] = 0;
+      pitchBuffer2[i] = 0;
+    }
+  }
+  
+  // Pad the rest with silence if output is shorter
+  for (int i = outputSamples; i < BUFFER_SIZE; i++) {
+    pitchBuffer1[i] = 0;
+    pitchBuffer2[i] = 0;
+  }
+}
+
+// Alternative: Simple downsampling method (faster but lower quality)
+void applySimpleDownsample() {
+  const int DOWNSAMPLE_FACTOR = 2; // 2 = one octave down
+  
+  // Clear buffers
+  memset(pitchBuffer1, 0, BUFFER_SIZE * sizeof(int16_t));
+  memset(pitchBuffer2, 0, BUFFER_SIZE * sizeof(int16_t));
+  
+  // Downsample by averaging
+  for (int i = 0; i < BUFFER_SIZE / DOWNSAMPLE_FACTOR; i++) {
+    int32_t sum1 = 0, sum2 = 0;
+    for (int j = 0; j < DOWNSAMPLE_FACTOR; j++) {
+      int srcIdx = i * DOWNSAMPLE_FACTOR + j;
+      if (srcIdx < BUFFER_SIZE) {
+        sum1 += ringBuffer1[srcIdx];
+        sum2 += ringBuffer2[srcIdx];
+      }
+    }
+    
+    // Store averaged sample and duplicate to maintain timing
+    int16_t avg1 = sum1 / DOWNSAMPLE_FACTOR;
+    int16_t avg2 = sum2 / DOWNSAMPLE_FACTOR;
+    
+    for (int j = 0; j < DOWNSAMPLE_FACTOR; j++) {
+      int dstIdx = i * DOWNSAMPLE_FACTOR + j;
+      if (dstIdx < BUFFER_SIZE) {
+        pitchBuffer1[dstIdx] = avg1;
+        pitchBuffer2[dstIdx] = avg2;
+      }
+    }
+  }
+}
+
+void sendBufferData() {
+  Serial.write(0xFF);
+  Serial.write(0xAA);
+  // Send pitch-shifted buffers instead of original
+  Serial.write((uint8_t*)pitchBuffer1, BUFFER_SIZE * 2);
+  Serial.write((uint8_t*)pitchBuffer2, BUFFER_SIZE * 2);
+  Serial.println("BUFFER_SENT");
+}
 
 
