@@ -2,7 +2,6 @@
 // VoiceDetector.cpp - Updated for (1, 79, 10, 1) input shape
 // ============================================================================
 #include "VoiceDetector.h"
-#include <Arduino.h>
 
 VoiceDetector::VoiceDetector() {
     nn = new NeuralNetwork();
