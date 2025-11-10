@@ -1,5 +1,5 @@
 // ============================================================================
-// VoiceDetector.cpp - Updated for (1, 79, 10, 1) input shape
+// VoiceDetector.cpp - Process int16_t directly
 // ============================================================================
 #include "VoiceDetector.h"
 
@@ -13,30 +13,20 @@ VoiceDetector::~VoiceDetector() {
     delete audioProcessor;
 }
 
-float VoiceDetector::detectWakeWord(const float* audio, int length) {
-    // Extract MFCC features (79 frames x 10 coefficients)
+float VoiceDetector::detectWakeWord(const int16_t* audio, int length) {
+    // Extract MFCC features directly from int16_t audio
     audioProcessor->extractMFCC(audio, length, mfcc_features);
     
     // Get input buffer from neural network
-    // Expected shape: (1, 79, 10, 1) = batch, height, width, channels
-    // Data layout: 1 * 79 * 10 * 1 = 790 floats
     float* input_buffer = nn->getInputBuffer();
     
     // Copy MFCC features to input buffer
-    // Memory layout for (1, 79, 10, 1):
-    //   - 1 batch
-    //   - 79 rows (time frames)
-    //   - 10 columns (MFCC coefficients)
-    //   - 1 channel
-    // The channel dimension is implicit (always 1), so we flatten as before
     int idx = 0;
     for (int frame = 0; frame < N_FRAMES; frame++) {
         for (int mfcc = 0; mfcc < N_MFCC; mfcc++) {
             input_buffer[idx++] = mfcc_features[frame][mfcc];
         }
     }
-    
-    // Total: 79 * 10 * 1 = 790 values copied
     
     // Run inference
     float score = nn->predict();

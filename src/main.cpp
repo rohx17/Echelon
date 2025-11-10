@@ -33,7 +33,7 @@ void loop() {
     unsigned long start_time = millis();
     
     // Run detection on preloaded audio
-    float score = detector->detectWakeWord(audio_data, AUDIO_LENGTH);
+    float score = detector->detectWakeWord(mic1_audio_data, AUDIO_LENGTH);
     
     unsigned long inference_time = millis() - start_time;
     

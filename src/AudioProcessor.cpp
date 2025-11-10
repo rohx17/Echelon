@@ -1,8 +1,8 @@
-
 // ============================================================================
-// AudioProcessor.cpp - Implementation
+// AudioProcessor.cpp - Process int16_t audio
 // ============================================================================
 #include "AudioProcessor.h"
+
 AudioProcessor::AudioProcessor() {
     // Initialize Hanning window
     for (int i = 0; i < N_FFT; i++) {
@@ -54,14 +54,16 @@ void AudioProcessor::computeFFT(float* real, float* imag, int n) {
     }
 }
 
-void AudioProcessor::extractMFCC(const float* audio, int length, float mfcc_features[][N_MFCC]) {
+// Extract MFCC from int16_t audio (matching ESP32 mic format)
+void AudioProcessor::extractMFCC(const int16_t* audio, int length, float mfcc_features[][N_MFCC]) {
     // Process each frame
     int frame_idx = 0;
     
     for (int start = 0; start + N_FFT <= length && frame_idx < N_FRAMES; start += HOP_LENGTH) {
-        // Apply window and copy to FFT buffer
+        // Apply window and convert int16_t to float
+        // Note: We keep the int16_t scale here (no division by 32768)
         for (int i = 0; i < N_FFT; i++) {
-            fft_real[i] = audio[start + i] * hanning_window[i];
+            fft_real[i] = (float)audio[start + i] * hanning_window[i];
             fft_imag[i] = 0.0f;
         }
         
@@ -73,11 +75,10 @@ void AudioProcessor::extractMFCC(const float* audio, int length, float mfcc_feat
             power_spectrum[i] = fft_real[i] * fft_real[i] + fft_imag[i] * fft_imag[i];
         }
         
-        // Apply simplified mel filterbank (triangular filters)
+        // Apply simplified mel filterbank
         for (int mel = 0; mel < MEL_BINS; mel++) {
             mel_spectrum[mel] = 0.0f;
             
-            // Simplified: each mel bin averages a range of FFT bins
             int start_bin = (mel * FFT_BINS) / MEL_BINS;
             int end_bin = ((mel + 1) * FFT_BINS) / MEL_BINS;
             
@@ -92,7 +93,7 @@ void AudioProcessor::extractMFCC(const float* audio, int length, float mfcc_feat
             log_mel[i] = log(mel_spectrum[i] + 1e-6f);
         }
         
-        // DCT to get MFCCs (simplified - just take first N_MFCC coefficients)
+        // DCT to get MFCCs
         for (int mfcc = 0; mfcc < N_MFCC; mfcc++) {
             mfcc_features[frame_idx][mfcc] = 0.0f;
             for (int mel = 0; mel < MEL_BINS; mel++) {
