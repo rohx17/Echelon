@@ -2,8 +2,10 @@
 #include "AudioRecorder.h"
 
 
+const float PITCH_FACTOR = 2; // 0.5 = octave down, 1.0 = normal, 2.0 = octave up
+
 // Make variables accessible
-int16_t ringBuffer1[BUFFER_SIZE];
+int16_t ringBuffer1[BUFFER_SIZE_MIC1];
 int16_t ringBuffer2[BUFFER_SIZE];
 int16_t pitchBuffer1[BUFFER_SIZE];
 int16_t pitchBuffer2[BUFFER_SIZE];
@@ -27,7 +29,6 @@ void MIC_setup() {
   pinMode(micPin1, INPUT);
   pinMode(micPin2, INPUT);
   
-  while (!Serial) delay(10);
   delay(2000);
   Serial.println("DUAL MIC RING BUFFER READY");
   Serial.println("Send 'R' to record 1 second, 'S' to stop");
