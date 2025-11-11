@@ -9,18 +9,24 @@
 volatile int writeIndex_wit = 0;
 volatile bool bufferReady_wit = false;
 volatile bool shouldRecord_wit = false;
+volatile bool dataReadyToConsume_wit = false;  
 
 WiFiClientSecure* wifiClient = nullptr;
 
+void startRecording_wit();
+void testConnection_wit();
+void sendBufferToPython_wit();
+void sendToWitAi();
+void parseWitAiResponse();
 
-void WIT_loop() {
+bool WIT_loop() {
   // Check for commands from Python or Serial Monitor
   if (Serial.available() > 0) {
     char command = Serial.read();
     if (command == 'R' || command == 'r') {
-      startRecording();
+      startRecording_wit();
     } else if (command == 'T' || command == 't') {
-      testConnection();
+      testConnection_wit();
     }
   }
   
@@ -49,24 +55,33 @@ void WIT_loop() {
       Serial.println("RECORDING COMPLETE");
       
       // First send to Python for saving
-      sendBufferToPython();
+      sendBufferToPython_wit();
       
       // Then send to Wit.ai for recognition
       sendToWitAi();
       
       bufferReady_wit = false;
+      dataReadyToConsume_wit=true;
     }
   }
+  return dataReadyToConsume_wit;
 }
 
-void startRecording() {
+
+void WIT_acknowledgeData() {
+  // Call this after you've used the pitch buffer data
+  dataReadyToConsume_wit = false;
+}
+
+
+void startRecording_wit() {
   writeIndex_wit = 0;
   bufferReady_wit = false;
   shouldRecord_wit = true;
   Serial.println("RECORDING STARTED - Filling 3 second buffer...");
 }
 
-void testConnection() {
+void testConnection_wit() {
   Serial.println("\n[Test] Checking Wit.ai connection...");
   
   WiFiClientSecure* testClient = new WiFiClientSecure();
@@ -82,12 +97,12 @@ void testConnection() {
   delete testClient;
 }
 
-void sendBufferToPython() {
+void sendBufferToPython_wit() {
   Serial.println("\n[Python] Sending audio data to Python...");
   
   // Send binary header
   Serial.write(0xFF);
-  Serial.write(0xBB);
+  Serial.write(0xAA);
   Serial.flush();
   
   // Send audio buffer

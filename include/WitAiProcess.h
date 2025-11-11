@@ -6,5 +6,6 @@
 
 bool WIT_loop(); 
 void WIT_acknowledgeData(); 
+void WIT_acknowledgeData();
 
 #endif

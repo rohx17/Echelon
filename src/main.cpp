@@ -62,6 +62,7 @@ void loop() {
             /* code */
             break;
         case WIT_STATE:
+            Run_Wit();
             /* code */
             break;
         case PROCESS_INTENT:
@@ -75,6 +76,15 @@ void loop() {
 }
 
 
+void Run_Wit()
+{
+    if (WIT_loop()) 
+    {
+        WIT_acknowledgeData();
+        m_states = PROCESS_INTENT;
+        Serial.println("\nReady to process");
+    }
+}
 
 
 void Run_WakeWord()
