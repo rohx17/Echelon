@@ -128,7 +128,7 @@ void Run_WakeWord() {
         Serial.print(score * 100, 1);
         Serial.print("%");
         
-        if (score > 0) {
+        if (score > 0.5) {
             Serial.println(" 😊 WAKE WORD DETECTED!");
             freeBuffers();  // Free wake word buffers
             m_states = WIT_STATE;
