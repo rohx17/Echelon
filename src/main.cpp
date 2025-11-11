@@ -8,6 +8,7 @@
 #include "VoiceDetector.h"
 #include "AudioRecorder.h"
 #include "WitAiProcess.h"
+#include "utils.h"
 
 VoiceDetector* detector;
 
@@ -29,18 +30,20 @@ void Run_Process();
 
 void connectWiFi();
 
+
 void setup() {
-    Serial.begin(1021600);//1021600
+    Serial.begin(1021600);
     while(!Serial);
     
     Serial.println("\n=== Voice Detection Test ===");
-    Serial.println("Initializing...");
+    checkMemory("Setup start");
     
     // Initialize detector
     detector = new VoiceDetector();    
     Serial.println("Model loaded!");
     
     MIC_setup();
+    checkMemory("After MIC setup");
 
     m_states = WIFI_CONNECT;
     delay(1000);
@@ -75,54 +78,68 @@ void loop() {
      
 }
 
-
-void Run_Wit()
-{
-    if (WIT_loop()) 
-    {
+void Run_Wit() {
+    // Allocate only ringBuffer1 for Wit.ai (3 seconds)
+    if (!buffersAllocated) {
+        if (!allocateWitBuffers()) {
+            Serial.println("ERROR: Failed to allocate Wit.ai buffers!");
+            return;
+        }
+    }
+    
+    if (WIT_loop()) {
         WIT_acknowledgeData();
+        freeBuffers();  // Free Wit.ai buffer
         m_states = PROCESS_INTENT;
         Serial.println("\nReady to process");
+        checkMemory("After Wit.ai processing");
     }
 }
 
 
-void Run_WakeWord()
-{
-    if (MIC_loop()) 
-    {
+// Add a new state to free all memory
+void Run_Cleanup() {
+    freeBuffers();
+    checkMemory("After cleanup");
+    // Transition to appropriate state
+    m_states = WAKE_WORD_STATE;
+}
+
+
+void Run_WakeWord() {
+    // Allocate 4 buffers for wake word (1 second each)
+    if (!buffersAllocated) {
+        if (!allocateWakeWordBuffers()) {
+            Serial.println("ERROR: Failed to allocate wake word buffers!");
+            return;
+        }
+    }
+    
+    if (MIC_loop()) {
         Serial.println("\n✓ Audio data ready!");
+        checkMemory("Before wake word detection");
 
         unsigned long start_time = millis();
-        // Run detection on preloaded audio
         float score = detector->detectWakeWord(pitchBuffer1, BUFFER_SIZE);
         
         unsigned long inference_time = millis() - start_time;
         
-        // Print results
         Serial.print("Detection Score: ");
         Serial.print(score * 100, 1);
         Serial.print("%");
         
-        if (score > 0.5) {
+        if (score > 0) {
             Serial.println(" 😊 WAKE WORD DETECTED!");
+            freeBuffers();  // Free wake word buffers
+            m_states = WIT_STATE;
         } else {
             Serial.println(" ❌ Not detected");
-            m_states = WIT_STATE;
+            // Keep buffers for next wake word attempt
         }
         
-        Serial.print("Inference time: ");
-        Serial.print(inference_time);
-        Serial.println(" ms");
-        
-        // Optional: Print first few MFCC frames for debugging
-        detector->printMFCC(0);
-        detector->printMFCC(10);
-        detector->printMFCC(20);
         acknowledgeData();
     }
 }
-
 
 void Run_WifiConnectionCheck(){
     if (WiFi.status() != WL_CONNECTED) {

@@ -1,14 +1,23 @@
 #include <Arduino.h>
 #include "AudioRecorder.h"
+#include "utils.h"
 
 
 const float PITCH_FACTOR = 2; // 0.5 = octave down, 1.0 = normal, 2.0 = octave up
 
 // Make variables accessible
-int16_t ringBuffer1[BUFFER_SIZE_MIC1];
-int16_t ringBuffer2[BUFFER_SIZE];
-int16_t pitchBuffer1[BUFFER_SIZE];
-int16_t pitchBuffer2[BUFFER_SIZE];
+// int16_t ringBuffer1[BUFFER_SIZE_MIC1];
+// int16_t ringBuffer2[BUFFER_SIZE];
+// int16_t pitchBuffer1[BUFFER_SIZE];
+// int16_t pitchBuffer2[BUFFER_SIZE];
+
+int16_t* ringBuffer1 = nullptr;
+int16_t* ringBuffer2 = nullptr;
+int16_t* pitchBuffer1 = nullptr;
+int16_t* pitchBuffer2 = nullptr;
+
+volatile bool buffersAllocated = false;
+size_t currentBufferSize = 0;
 
 volatile int writeIndex = 0;
 volatile bool bufferReady = false;
@@ -20,6 +29,78 @@ void stopRecording();
 void applyPitchShift();
 void applySimpleDownsample();
 void sendBufferData();
+
+
+void freeBuffers() {
+  freeAudioBuffer(ringBuffer1, "ringBuffer1");
+  freeAudioBuffer(ringBuffer2, "ringBuffer2");
+  freeAudioBuffer(pitchBuffer1, "pitchBuffer1");
+  freeAudioBuffer(pitchBuffer2, "pitchBuffer2");
+  
+  ringBuffer1 = nullptr;
+  ringBuffer2 = nullptr;
+  pitchBuffer1 = nullptr;
+  pitchBuffer2 = nullptr;
+  buffersAllocated = false;
+  currentBufferSize = 0;
+}
+
+
+// Allocate 4 buffers for wake word (1 second each)
+bool allocateWakeWordBuffers() {
+  checkMemory("Before wake word buffer allocation");
+  
+  freeBuffers();
+  
+  ringBuffer1 = (int16_t*)allocateAudioBuffer(BUFFER_SIZE, "ringBuffer1");
+  ringBuffer2 = (int16_t*)allocateAudioBuffer(BUFFER_SIZE, "ringBuffer2");
+  pitchBuffer1 = (int16_t*)allocateAudioBuffer(BUFFER_SIZE, "pitchBuffer1");
+  pitchBuffer2 = (int16_t*)allocateAudioBuffer(BUFFER_SIZE, "pitchBuffer2");
+  
+  buffersAllocated = ringBuffer1 && ringBuffer2 && pitchBuffer1 && pitchBuffer2;
+  currentBufferSize = BUFFER_SIZE;
+  
+  if (buffersAllocated) {
+    Serial.println("[MEMORY] Successfully allocated 4 wake word buffers (1 second each)");
+  } else {
+    Serial.println("[MEMORY] ERROR: Wake word buffer allocation failed!");
+    freeBuffers();
+  }
+  
+  return buffersAllocated;
+}
+
+// Allocate only ringBuffer1 for Wit.ai (3 seconds)
+bool allocateWitBuffers() {
+  checkMemory("Before Wit.ai buffer allocation");
+  
+  freeBuffers();
+  
+  // Only allocate ringBuffer1 for Wit.ai
+  ringBuffer1 = (int16_t*)allocateAudioBuffer(BUFFER_SIZE_MIC1, "ringBuffer1");
+  
+  // Set other buffers to nullptr (not needed for Wit.ai)
+  ringBuffer2 = nullptr;
+  pitchBuffer1 = nullptr;
+  pitchBuffer2 = nullptr;
+  
+  buffersAllocated = ringBuffer1 != nullptr;
+  currentBufferSize = BUFFER_SIZE_MIC1;
+  
+  if (buffersAllocated) {
+    Serial.println("[MEMORY] Successfully allocated Wit.ai buffer (3 seconds)");
+  } else {
+    Serial.println("[MEMORY] ERROR: Wit.ai buffer allocation failed!");
+    freeBuffers();
+  }
+  
+  return buffersAllocated;
+}
+
+
+
+
+
 
 void MIC_setup() {
   
@@ -37,6 +118,15 @@ void MIC_setup() {
 }
 
 bool MIC_loop() {
+
+  if (!buffersAllocated || !ringBuffer1) {
+    Serial.println("ERROR: Buffers not allocated in MIC_loop!");
+    return false;
+  }
+  // Check if we're using wake word configuration (4 buffers)
+  bool isWakeWordMode = (ringBuffer2 != nullptr && pitchBuffer1 != nullptr && pitchBuffer2 != nullptr);
+  
+
   // Check for commands from Python
   if (Serial.available() > 0) {
     char command = Serial.read();

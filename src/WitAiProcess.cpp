@@ -5,6 +5,7 @@
 #include "AudioRecorder.h"
 #include "config.h"
 #include "WitAiProcess.h"
+#include "utils.h"
 
 volatile int writeIndex_wit = 0;
 volatile bool bufferReady_wit = false;
@@ -19,7 +20,21 @@ void sendBufferToPython_wit();
 void sendToWitAi();
 void parseWitAiResponse();
 
+
+
 bool WIT_loop() {
+    // Check for buffer allocation
+  if (!buffersAllocated || !ringBuffer1) {
+    Serial.println("WIT_loop: Buffers not allocated!");
+    return false;
+  }
+  
+  // Make sure we have the right buffer size for Wit.ai
+  if (currentBufferSize != BUFFER_SIZE_MIC1) {
+    Serial.println("WIT_loop: Wrong buffer size allocated!");
+    return false;
+  }
+  
   // Check for commands from Python or Serial Monitor
   if (Serial.available() > 0) {
     char command = Serial.read();
