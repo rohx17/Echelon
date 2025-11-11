@@ -16,15 +16,16 @@ int16_t* ringBuffer2 = nullptr;
 int16_t* pitchBuffer1 = nullptr;
 int16_t* pitchBuffer2 = nullptr;
 
-volatile bool buffersAllocated = false;
 size_t currentBufferSize = 0;
 
+volatile bool continuousRecording = true;
+volatile bool buffersAllocated = false;
+volatile bool shouldRecord = false;
 volatile int writeIndex = 0;
 volatile bool bufferReady = false;
-volatile bool shouldRecord = false;
 volatile bool dataReadyToConsume = false;  
 
-void startRecording();
+
 void stopRecording();
 void applyPitchShift();
 void applySimpleDownsample();
@@ -127,14 +128,20 @@ bool MIC_loop() {
   bool isWakeWordMode = (ringBuffer2 != nullptr && pitchBuffer1 != nullptr && pitchBuffer2 != nullptr);
   
 
-  // Check for commands from Python
   if (Serial.available() > 0) {
     char command = Serial.read();
-    if (command == 'R' || command == 'r') {
-      startRecording();
-    } else if (command == 'S' || command == 's') {
+    if (command == 'S' || command == 's') {
       stopRecording();
+      continuousRecording = false;  // Stop continuous recording
+    } else if (command == 'R' || command == 'r') {
+      continuousRecording = true;   // Restart continuous recording
+      startRecording();
     }
+  }
+
+  // Auto-start recording if in continuous mode and not currently recording
+  if (continuousRecording && !shouldRecord && !bufferReady) {
+    startRecording();
   }
   
   // If recording, fill ring buffer
@@ -161,7 +168,7 @@ bool MIC_loop() {
     // If buffer is full, process and send data
     if (bufferReady) {
       applyPitchShift();
-      sendBufferData();
+      // sendBufferData();
       bufferReady = false;
       dataReadyToConsume = true; 
     }
@@ -177,6 +184,11 @@ void acknowledgeData() {
 }
 
 void startRecording() {
+  if (!buffersAllocated || !ringBuffer1) {
+    Serial.println("ERROR: Buffers not allocated in startRecording!");
+    return;
+  }
+  
   writeIndex = 0;
   bufferReady = false;
   shouldRecord = true;

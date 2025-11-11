@@ -14,7 +14,6 @@ volatile bool dataReadyToConsume_wit = false;
 
 WiFiClientSecure* wifiClient = nullptr;
 
-void startRecording_wit();
 void testConnection_wit();
 void sendBufferToPython_wit();
 void sendToWitAi();
@@ -35,15 +34,15 @@ bool WIT_loop() {
     return false;
   }
   
-  // Check for commands from Python or Serial Monitor
-  if (Serial.available() > 0) {
-    char command = Serial.read();
-    if (command == 'R' || command == 'r') {
-      startRecording_wit();
-    } else if (command == 'T' || command == 't') {
-      testConnection_wit();
-    }
-  }
+  // // Check for commands from Python or Serial Monitor
+  // if (Serial.available() > 0) {
+  //   char command = Serial.read();
+  //   if (command == 'R' || command == 'r') {
+  //     startRecording_wit();
+  //   } else if (command == 'T' || command == 't') {
+  //     testConnection_wit();
+  //   }
+  // }
   
   // Recording loop
   if (shouldRecord_wit) {
@@ -70,7 +69,7 @@ bool WIT_loop() {
       Serial.println("RECORDING COMPLETE");
       
       // First send to Python for saving
-      sendBufferToPython_wit();
+      // sendBufferToPython_wit();
       
       // Then send to Wit.ai for recognition
       sendToWitAi();

@@ -9,6 +9,6 @@ extern volatile bool witBuffersAllocated;
 
 bool WIT_loop(); 
 void WIT_acknowledgeData(); 
-void WIT_acknowledgeData();
+void startRecording_wit();
 
 #endif

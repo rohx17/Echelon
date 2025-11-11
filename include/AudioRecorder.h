@@ -22,6 +22,8 @@ extern int16_t* ringBuffer2;
 extern int16_t* pitchBuffer1;
 extern int16_t* pitchBuffer2;
 
+extern volatile bool continuousRecording;
+extern volatile bool shouldRecord;
 extern volatile bool buffersAllocated;
 extern size_t currentBufferSize;
 
@@ -34,5 +36,6 @@ void freeBuffers();
 void MIC_setup();
 bool MIC_loop(); 
 void acknowledgeData(); 
+void startRecording();
 
 #endif

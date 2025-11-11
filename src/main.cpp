@@ -9,13 +9,15 @@
 #include "AudioRecorder.h"
 #include "WitAiProcess.h"
 #include "utils.h"
+#include "LaserAttackDetector.h"
 
 VoiceDetector* detector;
+LaserAttackDetector* laserDetector;
 
 enum MainStates{
     WIFI_CONNECT,       //LCD display - Connecting ... / Connected
+    START_WAKE_WORD_STATE,    //LCD display  - Initializing Recording
     WAKE_WORD_STATE,    //LCD display  - Waiting... / Detected
-    VERIFY_LASER,       //LCD display  - Verifying... / Pass/Fail
     WIT_STATE,          //LCD display  - POST WIT / 
     PROCESS_INTENT,     //LCD display  - Display outcome
 };
@@ -24,7 +26,7 @@ MainStates m_states;
 
 void Run_WifiConnectionCheck();
 void Run_WakeWord();
-void Run_VerifyLaser();
+bool Run_VerifyLaser();
 void Run_Wit();
 void Run_Process();
 
@@ -42,6 +44,9 @@ void setup() {
     detector = new VoiceDetector();    
     Serial.println("Model loaded!");
     
+    laserDetector = new LaserAttackDetector();
+    Serial.println("Laser attack detector initialized");
+
     MIC_setup();
     checkMemory("After MIC setup");
 
@@ -50,31 +55,36 @@ void setup() {
 }
 
 void loop() {
-    
-    Run_WifiConnectionCheck();
 
     switch (m_states)
     {
         case WIFI_CONNECT:
             connectWiFi();
+            m_states = START_WAKE_WORD_STATE;
+            break;
+        case START_WAKE_WORD_STATE:
+            continuousRecording = true;
+            if (allocateWakeWordBuffers()) {
+                startRecording();
+                m_states = WAKE_WORD_STATE;
+            }
             break;
         case WAKE_WORD_STATE:
             Run_WakeWord();
-            break;
-        case VERIFY_LASER:
-            /* code */
             break;
         case WIT_STATE:
             Run_Wit();
             /* code */
             break;
         case PROCESS_INTENT:
+            m_states = START_WAKE_WORD_STATE;
             /* code */
             break;
         
         default:
             break;
     }
+    Run_WifiConnectionCheck();
      
 }
 
@@ -116,12 +126,9 @@ void Run_WakeWord() {
     }
     
     if (MIC_loop()) {
-        Serial.println("\n✓ Audio data ready!");
-        checkMemory("Before wake word detection");
 
         unsigned long start_time = millis();
         float score = detector->detectWakeWord(pitchBuffer1, BUFFER_SIZE);
-        
         unsigned long inference_time = millis() - start_time;
         
         Serial.print("Detection Score: ");
@@ -130,15 +137,59 @@ void Run_WakeWord() {
         
         if (score > 0.5) {
             Serial.println(" 😊 WAKE WORD DETECTED!");
+            continuousRecording = false;  // Stop continuous recording
+            if (!Run_VerifyLaser()) {
+                // Attack detected - restart wake word detection
+                Serial.println("Restarting wake word detection...");
+                continuousRecording = true;
+                acknowledgeData();
+                startRecording();
+                return;  
+            }
             freeBuffers();  // Free wake word buffers
+            startRecording_wit();
             m_states = WIT_STATE;
         } else {
             Serial.println(" ❌ Not detected");
-            // Keep buffers for next wake word attempt
+            // Auto-restart recording for next attempt
+            if (continuousRecording && !shouldRecord) {
+            startRecording();
+            }
         }
         
         acknowledgeData();
     }
+}
+// Modified Run_VerifyLaser with auto-calibration
+bool Run_VerifyLaser() {
+    static bool firstRun = true;
+    
+    // Auto-calibrate on first successful wake word
+    if (firstRun) {
+        Serial.println("\n📊 First wake word - calibrating detector...");
+        laserDetector->calibrate(pitchBuffer1, pitchBuffer2, BUFFER_SIZE);
+        firstRun = false;
+        
+        // On first run, assume it's legitimate (for calibration)
+        Serial.println("✅ Calibration complete - proceeding normally");
+        return true;
+    }
+    
+    Serial.println("\n🔍 Checking for laser attacks...");
+    
+    LaserAttackDetector::DetectionResult result = 
+        laserDetector->detectAttack(pitchBuffer1, pitchBuffer2, BUFFER_SIZE);
+    
+    laserDetector->printResults(result);
+    
+    if (result.attackDetected && result.confidence > 60) { // Only block high confidence attacks
+        Serial.println("⚠️  SECURITY ALERT: Probable laser attack!");
+        Serial.println("Recording may be compromised. Ignoring wake word.");
+        return false;
+    }
+    
+    Serial.println("✅ Audio verified - proceeding to Wit.ai");
+    return true;
 }
 
 void Run_WifiConnectionCheck(){
