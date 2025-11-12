@@ -19,7 +19,7 @@ void sendBufferToPython_wit();
 void sendToWitAi();
 void parseWitAiResponse();
 
-
+ProcessStates p_states;
 
 bool WIT_loop() {
     // Check for buffer allocation
