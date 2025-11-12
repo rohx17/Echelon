@@ -15,6 +15,13 @@ const char* LcdTimeDisplay::STATUS_INTENT_READY = "Intent Ready";
 const char* LcdTimeDisplay::STATUS_LASER_CHECK = "Security Check";
 const char* LcdTimeDisplay::STATUS_LASER_ALERT = "!LASER ATTACK!";
 
+const char* LcdTimeDisplay::STATUS_MORNING_PILL = "Morning Pill";
+const char* LcdTimeDisplay::STATUS_EVENING_PILL = "Evening Pill";
+const char* LcdTimeDisplay::STATUS_VERIFYING = "Verifying...";
+const char* LcdTimeDisplay::STATUS_HI_ROHIT = "Hi Rohit";
+const char* LcdTimeDisplay::STATUS_HI_STRANGER = "Hi Stranger";
+const char* LcdTimeDisplay::STATUS_SET_REMINDER = "Set Reminder";
+
 LcdTimeDisplay::LcdTimeDisplay() {
     lcd = nullptr;
     ntpUDP = nullptr;

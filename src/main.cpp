@@ -10,7 +10,7 @@
 #include "WitAiProcess.h"
 #include "utils.h"
 #include "LaserAttackDetector.h"
-#include "LcdTimeDisplay.h"  // Add LCD and Time display
+#include "LcdTimeDisplay.h"  
 
 VoiceDetector* detector;
 LaserAttackDetector* laserDetector;
@@ -33,6 +33,8 @@ void Run_Wit();
 void Run_Process();
 void Run_Cleanup();
 void connectWiFi();
+void handleIntentProcessing();
+
 
 void setup() {
     Serial.begin(1021600);
@@ -97,8 +99,7 @@ void loop() {
             break;
             
         case PROCESS_INTENT:
-            Run_Cleanup();
-            m_states = START_WAKE_WORD_STATE;
+            handleIntentProcessing();
             break;
         
         default:
@@ -106,6 +107,116 @@ void loop() {
     }
     Run_WifiConnectionCheck();
 }
+
+
+void handleIntentProcessing() {
+    Serial.println("\n=== PROCESSING INTENT ===");
+    
+    switch(p_states)
+    {
+        case EMPTY:
+            Serial.println("📊 Nothing to process...");
+            lcdDisplay->updateStatus("Empty");
+            delay(2000);
+            m_states = START_WAKE_WORD_STATE;
+            break;
+        case MORNING_PILL:
+            Serial.println("📊 Processing MORNING PILL reminder");
+            lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_MORNING_PILL);
+            
+            // Add your morning pill logic here
+            // For example:
+            // - Set a reminder for morning medication
+            // - Log the time
+            // - Send notification
+            // - Play confirmation sound
+            
+            // Simulate processing
+            delay(2000);
+            
+            // Show confirmation
+            lcdDisplay->updateStatus("Pill Set: AM");
+            Serial.println("✓ Morning pill reminder has been set");
+            delay(2000);
+            
+            // Return to wake word detection
+            m_states = START_WAKE_WORD_STATE;
+            break;
+        
+        case EVENING_PILL:
+            Serial.println("🌙 Processing EVENING PILL reminder");
+            lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_EVENING_PILL);
+            
+            // Add your evening pill logic here
+            // For example:
+            // - Set a reminder for evening medication
+            // - Log the time
+            // - Send notification
+            // - Play confirmation sound
+            
+            // Simulate processing
+            delay(2000);
+            
+            // Show confirmation
+            lcdDisplay->updateStatus("Pill Set: PM");
+            Serial.println("✓ Evening pill reminder has been set");
+            delay(2000);
+            
+            // Return to wake word detection
+            m_states = START_WAKE_WORD_STATE;
+            break;
+        
+        case VERIFY_ME:
+            Serial.println("🔍 Processing VERIFY ME command");
+            lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_VERIFYING);
+            
+            // Simulate verification process
+            delay(1500);
+            
+            // Example: Check if voice matches (you'd implement actual verification)
+            // bool isVerified = performVoiceVerification();
+            
+            // if (isVerified) {
+            //     lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_HI_ROHIT);
+            //     Serial.println("✓ User verified: Rohit");
+            //     delay(2000);
+                
+            //     // Could unlock features or provide personalized response
+            //     lcdDisplay->updateStatus("Access Granted");
+            // } else {
+            //     lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_HI_STRANGER);
+            //     Serial.println("✗ User not recognized");
+            //     delay(2000);
+                
+            //     lcdDisplay->updateStatus("Try Again");
+            // }
+            
+            // delay(1500);
+            // Return to wake word detection
+            m_states = START_WAKE_WORD_STATE;
+            break;
+        
+        case SET_REMINDER:
+            Serial.println("⏰ Processing SET REMINDER command");
+            lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_SET_REMINDER);    
+            // Simulate processing
+            delay(2000);            
+            // Return to wake word detection
+            m_states = START_WAKE_WORD_STATE;
+            break;
+        
+        default:
+            Serial.println("⚠️ Unknown intent - returning to wake word");
+            lcdDisplay->updateStatus("Unknown Cmd");
+            delay(2000);
+            m_states = START_WAKE_WORD_STATE;
+            break;
+    }
+    
+    Serial.println("=========================\n");
+}
+
+
 
 void Run_Wit() {
     // Update LCD status

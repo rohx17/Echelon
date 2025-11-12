@@ -58,6 +58,13 @@ public:
     static const char* STATUS_INTENT_READY;
     static const char* STATUS_LASER_CHECK;
     static const char* STATUS_LASER_ALERT;
+    
+    static const char* STATUS_MORNING_PILL;
+    static const char* STATUS_EVENING_PILL;
+    static const char* STATUS_VERIFYING;
+    static const char* STATUS_HI_ROHIT;
+    static const char* STATUS_HI_STRANGER;
+    static const char* STATUS_SET_REMINDER;
 };
 
     // Status messages for different states (declarations only)
@@ -70,5 +77,12 @@ public:
     static const char* STATUS_INTENT_READY;
     static const char* STATUS_LASER_CHECK;
     static const char* STATUS_LASER_ALERT;
+
+    static const char* STATUS_MORNING_PILL;
+    static const char* STATUS_EVENING_PILL;
+    static const char* STATUS_VERIFYING;
+    static const char* STATUS_HI_ROHIT;
+    static const char* STATUS_HI_STRANGER;
+    static const char* STATUS_SET_REMINDER;
 
 #endif // LCD_TIME_DISPLAY_H

@@ -8,10 +8,11 @@ extern int16_t* ringBuffer1;
 extern volatile bool witBuffersAllocated;
 
 enum ProcessStates{
+    EMPTY,
     SET_REMINDER,       //LCD display - Connecting ... / Connected
     VERIFY_ME,          //LCD display  - Initializing Recording
     MORNING_PILL,       //LCD display  - Waiting... / Detected
-    NIGHT_PILL,         //LCD display  - POST WIT / 
+    EVENING_PILL,       //LCD display  - POST WIT / 
 };
 
 extern ProcessStates p_states;

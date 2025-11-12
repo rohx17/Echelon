@@ -194,7 +194,7 @@ void sendToWitAi() {
   delete wifiClient;
   wifiClient = nullptr;
 }
-
+// Updated parseWitAiResponse() function to detect intents and set p_states
 void parseWitAiResponse() {
   // Read HTTP status and headers
   int status = -1;
@@ -252,9 +252,109 @@ void parseWitAiResponse() {
     Serial.println("========== PARSED RESULTS ==========");
     Serial.printf("Text: %s\n", text ? text : "(none)");
     
-    // Intents
-    if (doc["intents"].size() > 0) {
-      Serial.println("\nIntents:");
+    // Variables to track detected intent
+    bool intentDetected = false;
+    String detectedIntent = "";
+    p_states = EMPTY;
+    // Check Entities first (they seem more reliable in your examples)
+    JsonObject entities = doc["entities"];
+    if (!entities.isNull() && entities.size() > 0) {
+      Serial.println("Entities:");
+      
+      // Check for morning pill entity
+      if (entities.containsKey("morning:morning")) {
+        JsonArray morningArray = entities["morning:morning"].as<JsonArray>();
+        if (morningArray.size() > 0) {
+          p_states = MORNING_PILL;
+          intentDetected = true;
+          detectedIntent = "Morning Pill";
+          Serial.println("✓ Detected: MORNING PILL command");
+        }
+      }
+      
+      // Check for evening pill entity
+      if (!intentDetected && entities.containsKey("evening:evening")) {
+        JsonArray eveningArray = entities["evening:evening"].as<JsonArray>();
+        if (eveningArray.size() > 0) {
+          p_states = EVENING_PILL;
+          intentDetected = true;
+          detectedIntent = "Evening Pill";
+          Serial.println("✓ Detected: EVENING PILL command");
+        }
+      }
+      
+      // Check for reminder entity
+      if (!intentDetected && entities.containsKey("remindme:remindme")) {
+        JsonArray remindArray = entities["remindme:remindme"].as<JsonArray>();
+        if (remindArray.size() > 0) {
+          p_states = SET_REMINDER;
+          intentDetected = true;
+          detectedIntent = "Set Reminder";
+          Serial.println("✓ Detected: SET REMINDER command");
+        }
+      }
+      
+      // Check for verify entity (using wit$reminder as shown in your example)
+      if (!intentDetected && entities.containsKey("wit$reminder:reminder")) {
+        JsonArray verifyArray = entities["wit$reminder:reminder"].as<JsonArray>();
+        if (verifyArray.size() > 0) {
+          const char* value = verifyArray[0]["value"];
+          if (value && String(value).indexOf("Verify") >= 0) {
+            p_states = VERIFY_ME;
+            intentDetected = true;
+            detectedIntent = "Verify Me";
+            Serial.println("✓ Detected: VERIFY ME command");
+          }
+        }
+      }
+      
+      // Print all entities for debugging
+      for (JsonPair kv : entities) {
+        Serial.printf("%s:\n", kv.key().c_str());
+        if (kv.value().is<JsonArray>()) {
+          for (JsonVariant entity : kv.value().as<JsonArray>()) {
+            const char* value = entity["value"];
+            float confidence = entity["confidence"];
+            Serial.printf("- value: %s (%.4f)\n", value ? value : "(none)", confidence);
+          }
+        }
+      }
+    }
+    
+    // Alternative: Check text directly if no entity match
+    if (!intentDetected && text) {
+      String textStr = String(text);
+      textStr.toLowerCase();
+      
+      if (textStr.indexOf("morning") >= 0 && textStr.indexOf("pill") >= 0) {
+        p_states = MORNING_PILL;
+        intentDetected = true;
+        detectedIntent = "Morning Pill";
+        Serial.println("✓ Detected from text: MORNING PILL");
+      }
+      else if (textStr.indexOf("evening") >= 0 && textStr.indexOf("pill") >= 0) {
+        p_states = EVENING_PILL;
+        intentDetected = true;
+        detectedIntent = "Evening Pill";
+        Serial.println("✓ Detected from text: EVENING PILL");
+      }
+      else if (textStr.indexOf("reminder") >= 0 || textStr.indexOf("remind") >= 0) {
+        p_states = SET_REMINDER;
+        intentDetected = true;
+        detectedIntent = "Set Reminder";
+        Serial.println("✓ Detected from text: SET REMINDER");
+      }
+      else if (textStr.indexOf("verify") >= 0) {
+        p_states = VERIFY_ME;
+        intentDetected = true;
+        detectedIntent = "Verify Me";
+        Serial.println("✓ Detected from text: VERIFY ME");
+      }
+    }
+    
+    // Intents (backup check)
+    if (!intentDetected && doc["intents"].size() > 0) {
+      Serial.println("Intents:");
       for (JsonVariant intent : doc["intents"].as<JsonArray>()) {
         const char* name = intent["name"];
         float confidence = intent["confidence"];
@@ -262,26 +362,10 @@ void parseWitAiResponse() {
       }
     }
     
-    // Entities
-    JsonObject entities = doc["entities"];
-    if (!entities.isNull() && entities.size() > 0) {
-      Serial.println("\nEntities:");
-      for (JsonPair kv : entities) {
-        Serial.printf("  %s:\n", kv.key().c_str());
-        if (kv.value().is<JsonArray>()) {
-          for (JsonVariant entity : kv.value().as<JsonArray>()) {
-            const char* value = entity["value"];
-            float confidence = entity["confidence"];
-            Serial.printf("    - value: %s (%.4f)\n", value ? value : "(none)", confidence);
-          }
-        }
-      }
-    }
-    
     // Traits
     JsonObject traits = doc["traits"];
     if (!traits.isNull() && traits.size() > 0) {
-      Serial.println("\nTraits:");
+      Serial.println("Traits:");
       for (JsonPair kv : traits) {
         Serial.printf("  %s:\n", kv.key().c_str());
         if (kv.value().is<JsonArray>()) {
@@ -294,7 +378,13 @@ void parseWitAiResponse() {
       }
     }
     
-    Serial.println("====================================\n");
+    Serial.println("====================================");
+    
+    if (intentDetected) {
+      Serial.printf("\n★ INTENT READY: %s\n", detectedIntent.c_str());
+    } else {
+      Serial.println("\n✗ No recognized intent detected");
+    }
     
   } else {
     Serial.printf("[Wit.ai] ✗ Error: HTTP %d\n", status);
