@@ -1,5 +1,5 @@
 // ============================================================================
-// main.cpp - Test with preloaded audio + LCD Display + NTP Time
+// Updated main.cpp - SET_REMINDER state with DTMF detection
 // ============================================================================
 #include <Arduino.h>
 #include "config.h"
@@ -10,21 +10,25 @@
 #include "WitAiProcess.h"
 #include "utils.h"
 #include "LaserAttackDetector.h"
-#include "LcdTimeDisplay.h"  
+#include "LcdTimeDisplay.h"
+#include "DTMFDetector.h"  // Add DTMF detector
 
 VoiceDetector* detector;
 LaserAttackDetector* laserDetector;
-LcdTimeDisplay* lcdDisplay;  // LCD display instance
+LcdTimeDisplay* lcdDisplay;
+DTMFDetector* dtmfDetector;  // DTMF detector instance
 
 enum MainStates{
-    WIFI_CONNECT,              // LCD display - Connecting ... / Connected
-    START_WAKE_WORD_STATE,     // LCD display - Initializing Recording
-    WAKE_WORD_STATE,           // LCD display - Waiting... / Detected
-    WIT_STATE,                 // LCD display - POST WIT / 
-    PROCESS_INTENT,            // LCD display - Display outcome
+    WIFI_CONNECT,
+    START_WAKE_WORD_STATE,
+    WAKE_WORD_STATE,
+    WIT_STATE,
+    PROCESS_INTENT,
+    DTMF_INPUT_STATE,  // New state for DTMF input
 };
 
 MainStates m_states;
+String reminderTime = "";  // Store the final time
 
 void Run_WifiConnectionCheck();
 void Run_WakeWord();
@@ -32,15 +36,15 @@ bool Run_VerifyLaser();
 void Run_Wit();
 void Run_Process();
 void Run_Cleanup();
+void Run_DTMFInput();  // New function for DTMF handling
 void connectWiFi();
 void handleIntentProcessing();
 
-
 void setup() {
-    Serial.begin(1021600);
+    Serial.begin(115200);  // Changed to match DTMF requirements
     while(!Serial);
     
-    Serial.println("\n=== Voice Detection Test with LCD ===");
+    Serial.println("\n=== Voice Detection Test with LCD & DTMF ===");
     
     // Initialize LCD Display first
     lcdDisplay = new LcdTimeDisplay();
@@ -59,6 +63,13 @@ void setup() {
     Serial.println("Laser attack detector initialized");
     lcdDisplay->updateStatus("Security OK");
     delay(500);
+    
+    // Initialize DTMF detector
+    dtmfDetector = new DTMFDetector();
+    dtmfDetector->init();
+    Serial.println("DTMF detector initialized");
+    lcdDisplay->updateStatus("DTMF OK");
+    delay(500);
 
     MIC_setup();
     checkMemory("After MIC setup");
@@ -70,8 +81,10 @@ void setup() {
 }
 
 void loop() {
-    // Update time display continuously
-    lcdDisplay->updateTime();
+    // Update time display continuously (except during DTMF input)
+    if (m_states != DTMF_INPUT_STATE) {
+        lcdDisplay->updateTime();
+    }
     
     switch (m_states)
     {
@@ -101,6 +114,10 @@ void loop() {
         case PROCESS_INTENT:
             handleIntentProcessing();
             break;
+            
+        case DTMF_INPUT_STATE:
+            Run_DTMFInput();
+            break;
         
         default:
             break;
@@ -108,9 +125,84 @@ void loop() {
     Run_WifiConnectionCheck();
 }
 
+void Run_DTMFInput() {
+    static bool dtmfInitialized = false;
+    static unsigned long lastUpdateTime = 0;
+    
+    // Initialize DTMF input on first entry
+    if (!dtmfInitialized) {
+        // Free wake word buffers to make room
+        freeBuffers();
+        checkMemory("After freeing wake word buffers");
+        
+        // Allocate DTMF buffer
+        if (!dtmfDetector->allocateBuffer()) {
+            Serial.println("[DTMF] Failed to allocate buffer!");
+            lcdDisplay->updateStatus("DTMF Buf Err!");
+            delay(2000);
+            m_states = START_WAKE_WORD_STATE;
+            return;
+        }
+        
+        // Calibrate DC offset
+        dtmfDetector->calibrateDCOffset(micPin1);
+        
+        // Reset time entry
+        dtmfDetector->resetTimeEntry();
+        
+        // Update LCD with initial display
+        lcdDisplay->updateStatus(dtmfDetector->getTimeDisplay().c_str());
+        
+        dtmfInitialized = true;
+        Serial.println("\n[DTMF] Ready for time input:");
+        Serial.println("  Digits 0-9: Enter time");
+        Serial.println("  A: Toggle AM/PM");
+        Serial.println("  C: Confirm");
+        Serial.println("  D: Backspace");
+    }
+    
+    // Record and detect DTMF
+    char detected = dtmfDetector->recordAndDetect(micPin1);
+    
+    if (detected != '\0') {
+        Serial.printf("[DTMF] Detected: %c\n", detected);
+        
+        // Process the detected tone
+        bool isComplete = dtmfDetector->processTimeEntry(detected);
+        
+        // Update LCD display
+        lcdDisplay->updateStatus(dtmfDetector->getTimeDisplay().c_str());
+        
+        if (isComplete) {
+            // Get the final time value
+            reminderTime = dtmfDetector->getTimeValue();
+            Serial.printf("[DTMF] Reminder set for: %s\n", reminderTime.c_str());
+            
+            // Show confirmation
+            String confirmMsg = "Set: " + reminderTime;
+            lcdDisplay->updateStatus(confirmMsg.c_str());
+            
+            // Clean up DTMF
+            dtmfDetector->freeBuffer();
+            dtmfInitialized = false;
+            checkMemory("After DTMF cleanup");
+            
+            // Wait a bit to show confirmation
+            delay(2000);
+            
+            // Return to wake word detection
+            m_states = START_WAKE_WORD_STATE;
+        }
+    }
+    
+    // Update display periodically to show cursor
+    if (millis() - lastUpdateTime > 500) {
+        lcdDisplay->updateStatus(dtmfDetector->getTimeDisplay().c_str());
+        lastUpdateTime = millis();
+    }
+}
 
 void handleIntentProcessing() {
-    Serial.println("\n=== PROCESSING INTENT ===");
     
     switch(p_states)
     {
@@ -120,16 +212,10 @@ void handleIntentProcessing() {
             delay(2000);
             m_states = START_WAKE_WORD_STATE;
             break;
+            
         case MORNING_PILL:
             Serial.println("📊 Processing MORNING PILL reminder");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_MORNING_PILL);
-            
-            // Add your morning pill logic here
-            // For example:
-            // - Set a reminder for morning medication
-            // - Log the time
-            // - Send notification
-            // - Play confirmation sound
             
             // Simulate processing
             delay(2000);
@@ -146,14 +232,7 @@ void handleIntentProcessing() {
         case EVENING_PILL:
             Serial.println("🌙 Processing EVENING PILL reminder");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_EVENING_PILL);
-            
-            // Add your evening pill logic here
-            // For example:
-            // - Set a reminder for evening medication
-            // - Log the time
-            // - Send notification
-            // - Play confirmation sound
-            
+        
             // Simulate processing
             delay(2000);
             
@@ -172,37 +251,18 @@ void handleIntentProcessing() {
             
             // Simulate verification process
             delay(1500);
-            
-            // Example: Check if voice matches (you'd implement actual verification)
-            // bool isVerified = performVoiceVerification();
-            
-            // if (isVerified) {
-            //     lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_HI_ROHIT);
-            //     Serial.println("✓ User verified: Rohit");
-            //     delay(2000);
-                
-            //     // Could unlock features or provide personalized response
-            //     lcdDisplay->updateStatus("Access Granted");
-            // } else {
-            //     lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_HI_STRANGER);
-            //     Serial.println("✗ User not recognized");
-            //     delay(2000);
-                
-            //     lcdDisplay->updateStatus("Try Again");
-            // }
-            
-            // delay(1500);
-            // Return to wake word detection
             m_states = START_WAKE_WORD_STATE;
             break;
         
         case SET_REMINDER:
             Serial.println("⏰ Processing SET REMINDER command");
-            lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_SET_REMINDER);    
-            // Simulate processing
-            delay(2000);            
-            // Return to wake word detection
-            m_states = START_WAKE_WORD_STATE;
+            lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_SET_REMINDER);
+            
+            // Transition to DTMF input state
+            delay(1000);
+            lcdDisplay->updateStatus("Time Input");
+            delay(500);
+            m_states = DTMF_INPUT_STATE;
             break;
         
         default:
@@ -212,11 +272,7 @@ void handleIntentProcessing() {
             m_states = START_WAKE_WORD_STATE;
             break;
     }
-    
-    Serial.println("=========================\n");
 }
-
-
 
 void Run_Wit() {
     // Update LCD status
@@ -243,7 +299,6 @@ void Run_Wit() {
     }
 }
 
-// Add a new state to free all memory
 void Run_Cleanup() {
     freeBuffers();
     checkMemory("After cleanup");
@@ -301,7 +356,6 @@ void Run_WakeWord() {
     }
 }
 
-// Modified Run_VerifyLaser with auto-calibration and LCD updates
 bool Run_VerifyLaser() {
     static bool firstRun = true;
     
