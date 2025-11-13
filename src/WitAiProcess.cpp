@@ -6,6 +6,7 @@
 #include "config.h"
 #include "WitAiProcess.h"
 #include "utils.h"
+#include "main.h"
 
 volatile int writeIndex_wit = 0;
 volatile bool bufferReady_wit = false;
@@ -67,6 +68,7 @@ bool WIT_loop() {
     // When buffer is full, send to both Wit.ai AND Python
     if (bufferReady_wit) {
       Serial.println("RECORDING COMPLETE");
+      lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_PROCESSING_WIT);
       
       // First send to Python for saving
       // sendBufferToPython_wit();

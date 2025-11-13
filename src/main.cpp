@@ -11,7 +11,8 @@
 #include "utils.h"
 #include "LaserAttackDetector.h"
 #include "LcdTimeDisplay.h"
-#include "DTMFDetector.h"  // Add DTMF detector
+#include "DTMFDetector.h"  
+#include "main.h"
 
 VoiceDetector* detector;
 LaserAttackDetector* laserDetector;
@@ -174,11 +175,11 @@ void Run_DTMFInput() {
         lcdDisplay->updateStatus(dtmfDetector->getTimeDisplay().c_str());
         
         if (isComplete) {
-            // Get the final time value
+            // Get the final time value (12-hour format with AM/PM)
             reminderTime = dtmfDetector->getTimeValue();
             Serial.printf("[DTMF] Reminder set for: %s\n", reminderTime.c_str());
             
-            // Show confirmation
+            // Show confirmation with AM/PM
             String confirmMsg = "Set: " + reminderTime;
             lcdDisplay->updateStatus(confirmMsg.c_str());
             
@@ -188,7 +189,7 @@ void Run_DTMFInput() {
             checkMemory("After DTMF cleanup");
             
             // Wait a bit to show confirmation
-            delay(2000);
+            delay(3000);  // Increased to 3 seconds to clearly show AM/PM
             
             // Return to wake word detection
             m_states = START_WAKE_WORD_STATE;
@@ -276,7 +277,7 @@ void handleIntentProcessing() {
 
 void Run_Wit() {
     // Update LCD status
-    lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_PROCESSING_WIT);
+    lcdDisplay->updateStatus("Listening...");
     
     // Allocate only ringBuffer1 for Wit.ai (3 seconds)
     if (!buffersAllocated) {
@@ -324,7 +325,7 @@ void Run_WakeWord() {
         Serial.print(score * 100, 1);
         Serial.print("%");
         
-        if (score > 0.5) {
+        if (score > 0.8) {
             Serial.println(" 😊 WAKE WORD DETECTED!");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_DETECTED);
             delay(500);  // Show detection briefly

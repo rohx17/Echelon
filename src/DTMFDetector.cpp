@@ -285,23 +285,14 @@ String DTMFDetector::getTimeValue() {
         return "";
     }
     
-    // Convert to 24hr format for processing
+    // Keep in 12-hour format with AM/PM
     String hour = String(timeEntry[0]) + String(timeEntry[1]);
     String minute = String(timeEntry[2]) + String(timeEntry[3]);
     
-    int hr = hour.toInt();
+    // Format: HH:MM AM/PM
+    String timeStr = hour + ":" + minute + " " + (isPM ? "PM" : "AM");
     
-    // Convert to 24hr format
-    if (!isPM && hr == 12) {
-        hr = 0;  // 12 AM = 00:00
-    } else if (isPM && hr != 12) {
-        hr += 12;  // PM hours
-    }
-    
-    char timeStr[6];
-    sprintf(timeStr, "%02d:%02d", hr, minute.toInt());
-    
-    return String(timeStr);
+    return timeStr;
 }
 
 bool DTMFDetector::isTimeComplete() {
@@ -312,4 +303,3 @@ bool DTMFDetector::isTimeComplete() {
     }
     return true;
 }
-
