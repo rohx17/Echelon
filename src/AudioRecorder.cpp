@@ -1,3 +1,6 @@
+// ============================================================================
+// AudioRecorder.cpp - Record audio
+// ============================================================================
 #include <Arduino.h>
 #include "AudioRecorder.h"
 #include "utils.h"
@@ -5,11 +8,6 @@
 
 const float PITCH_FACTOR = 2; // 0.5 = octave down, 1.0 = normal, 2.0 = octave up
 
-// Make variables accessible
-// int16_t ringBuffer1[BUFFER_SIZE_MIC1];
-// int16_t ringBuffer2[BUFFER_SIZE];
-// int16_t pitchBuffer1[BUFFER_SIZE];
-// int16_t pitchBuffer2[BUFFER_SIZE];
 
 int16_t* ringBuffer1 = nullptr;
 int16_t* ringBuffer2 = nullptr;

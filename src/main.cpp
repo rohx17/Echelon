@@ -1,5 +1,5 @@
 // ============================================================================
-// Updated main.cpp - SET_REMINDER state with DTMF detection
+// main.cpp
 // ============================================================================
 #include <Arduino.h>
 #include "config.h"
@@ -18,7 +18,7 @@
 VoiceDetector* detector;
 LaserAttackDetector* laserDetector;
 LcdTimeDisplay* lcdDisplay;
-DTMFDetector* dtmfDetector;  // DTMF detector instance
+DTMFDetector* dtmfDetector;
 WhatsAppVerification* whatsappVerifier;
 
 enum MainStates{
@@ -27,12 +27,12 @@ enum MainStates{
     WAKE_WORD_STATE,
     WIT_STATE,
     PROCESS_INTENT,
-    DTMF_INPUT_STATE,  // New state for DTMF input
+    DTMF_INPUT_STATE,
     VERIFY_CODE_INPUT_STATE, 
 };
 
 MainStates m_states;
-String reminderTime = "";  // Store the final time
+String reminderTime = "";
 
 void Run_WifiConnectionCheck();
 void Run_WakeWord();
@@ -40,23 +40,23 @@ bool Run_VerifyLaser();
 void Run_Wit();
 void Run_Process();
 void Run_Cleanup();
-void Run_DTMFInput();  // New function for DTMF handling
-void connectWiFi();
-void handleIntentProcessing();
+void Run_DTMFInput();
 void Run_VerificationCodeInput();
 
+void connectWiFi();
+void handleIntentProcessing();
+
+
 void setup() {
-    Serial.begin(115200);  // Changed to match DTMF requirements
+    Serial.begin(115200);
     while(!Serial);
     
-    Serial.println("\n=== Voice Detection Test with LCD & DTMF ===");
+    checkMemory("Setup start");
     
     // Initialize LCD Display first
     lcdDisplay = new LcdTimeDisplay();
     lcdDisplay->begin();
     lcdDisplay->updateStatus("Starting up...");
-    
-    checkMemory("Setup start");
     
     // Initialize detector
     detector = new VoiceDetector();    
@@ -83,8 +83,8 @@ void setup() {
 
     whatsappVerifier = new WhatsAppVerification();
     whatsappVerifier->init(
-        WHATSAPP_PHONE_NUMBER,  // Your WhatsApp phone number (with country code)
-        WHATSAPP_API_KEY        // Your CallMeBot API key
+        WHATSAPP_PHONE_NUMBER,  
+        WHATSAPP_API_KEY        
     );
     
     Serial.println("WhatsApp verification initialized");
@@ -96,7 +96,6 @@ void setup() {
 }
 
 void loop() {
-    // Update time display continuously (except during DTMF input)
     if (m_states != DTMF_INPUT_STATE) {
         lcdDisplay->updateTime();
     }
@@ -148,13 +147,10 @@ void Run_DTMFInput() {
     static bool dtmfInitialized = false;
     static unsigned long lastUpdateTime = 0;
     
-    // Initialize DTMF input on first entry
     if (!dtmfInitialized) {
-        // Free wake word buffers to make room
         freeBuffers();
         checkMemory("After freeing wake word buffers");
         
-        // Allocate DTMF buffer
         if (!dtmfDetector->allocateBuffer()) {
             Serial.println("[DTMF] Failed to allocate buffer!");
             lcdDisplay->updateStatus("DTMF Buf Err!");
@@ -163,13 +159,8 @@ void Run_DTMFInput() {
             return;
         }
         
-        // Calibrate DC offset
         dtmfDetector->calibrateDCOffset(micPin1);
-        
-        // Reset time entry
         dtmfDetector->resetTimeEntry();
-        
-        // Update LCD with initial display
         lcdDisplay->updateStatus(dtmfDetector->getTimeDisplay().c_str());
         
         dtmfInitialized = true;
@@ -180,16 +171,11 @@ void Run_DTMFInput() {
         Serial.println("  D: Backspace");
     }
     
-    // Record and detect DTMF
     char detected = dtmfDetector->recordAndDetect(micPin1);
     
     if (detected != '\0') {
         Serial.printf("[DTMF] Detected: %c\n", detected);
-        
-        // Process the detected tone
         bool isComplete = dtmfDetector->processTimeEntry(detected);
-        
-        // Update LCD display
         lcdDisplay->updateStatus(dtmfDetector->getTimeDisplay().c_str());
         
         if (isComplete) {
@@ -201,20 +187,15 @@ void Run_DTMFInput() {
             String confirmMsg = "Set: " + reminderTime;
             lcdDisplay->updateStatus(confirmMsg.c_str());
             
-            // Clean up DTMF
             dtmfDetector->freeBuffer();
             dtmfInitialized = false;
             checkMemory("After DTMF cleanup");
             
-            // Wait a bit to show confirmation
-            delay(3000);  // Increased to 3 seconds to clearly show AM/PM
-            
-            // Return to wake word detection
+            delay(3000);
             m_states = START_WAKE_WORD_STATE;
         }
     }
     
-    // Update display periodically to show cursor
     if (millis() - lastUpdateTime > 500) {
         lcdDisplay->updateStatus(dtmfDetector->getTimeDisplay().c_str());
         lastUpdateTime = millis();
@@ -239,12 +220,10 @@ void handleIntentProcessing() {
             // Simulate processing
             delay(2000);
             
-            // Show confirmation
             lcdDisplay->updateStatus("Pill Set: AM");
             Serial.println("✓ Morning pill reminder has been set");
             delay(2000);
             
-            // Return to wake word detection
             m_states = START_WAKE_WORD_STATE;
             break;
         
@@ -252,15 +231,12 @@ void handleIntentProcessing() {
             Serial.println("🌙 Processing EVENING PILL reminder");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_EVENING_PILL);
         
-            // Simulate processing
             delay(2000);
             
-            // Show confirmation
             lcdDisplay->updateStatus("Pill Set: PM");
             Serial.println("✓ Evening pill reminder has been set");
             delay(2000);
             
-            // Return to wake word detection
             m_states = START_WAKE_WORD_STATE;
             break;
         
@@ -268,7 +244,6 @@ void handleIntentProcessing() {
             Serial.println("🔍 Processing VERIFY ME command");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_VERIFYING);
             
-            // Generate and send verification code via WhatsApp
             Serial.println("[VERIFY] Sending verification code via WhatsApp...");
             lcdDisplay->updateStatus("Sending code...");
             
@@ -277,11 +252,9 @@ void handleIntentProcessing() {
                 lcdDisplay->updateStatus("Check WhatsApp!");
                 delay(2500);
                 
-                // Show instruction
                 lcdDisplay->updateStatus("Enter 4 digits");
                 delay(2000);
                 
-                // Transition to code input state
                 m_states = VERIFY_CODE_INPUT_STATE;
             } else {
                 Serial.println("[VERIFY] Failed to send WhatsApp message!");
@@ -289,7 +262,6 @@ void handleIntentProcessing() {
                 lcdDisplay->updateStatus("WhatsApp Failed!");
                 delay(3000);
                 
-                // Show help message
                 lcdDisplay->updateStatus("Check API key");
                 delay(2000);
                 
@@ -301,7 +273,6 @@ void handleIntentProcessing() {
             Serial.println("⏰ Processing SET REMINDER command");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_SET_REMINDER);
             
-            // Transition to DTMF input state
             delay(1000);
             lcdDisplay->updateStatus("Time Input");
             delay(500);
@@ -316,7 +287,7 @@ void handleIntentProcessing() {
             break;
     }
 }
-// Add new function for verification code input
+
 void Run_VerificationCodeInput() {
     static bool verificationInitialized = false;
     static unsigned long lastUpdateTime = 0;
@@ -326,7 +297,6 @@ void Run_VerificationCodeInput() {
     const int MAX_ATTEMPTS = 3;
     
     if (!verificationInitialized) {
-        // Free any existing buffers
         freeBuffers();
         checkMemory("After freeing buffers for verification");
         
@@ -339,13 +309,8 @@ void Run_VerificationCodeInput() {
             return;
         }
         
-        // Calibrate DTMF detector
         dtmfDetector->calibrateDCOffset(micPin1);
-        
-        // Reset code entry
         whatsappVerifier->resetCodeEntry();
-        
-        // Display waiting for code
         String display = "Code: " + whatsappVerifier->getCodeDisplay();
         lcdDisplay->updateStatus(display.c_str());
         
@@ -359,20 +324,17 @@ void Run_VerificationCodeInput() {
         Serial.println("  Waiting for DTMF tones...");
     }
     
-    // Check for code expiration
     if (whatsappVerifier->isCodeExpired()) {
         Serial.println("[VERIFY] Code expired!");
         lcdDisplay->updateStatus("Code Expired!");
         delay(2000);
         
-        // Cleanup and return to wake word
         dtmfDetector->freeBuffer();
         verificationInitialized = false;
         m_states = START_WAKE_WORD_STATE;
         return;
     }
     
-    // Detect DTMF input
     char detected = dtmfDetector->recordAndDetect(micPin1);
     
     if (detected != '\0') {
@@ -380,22 +342,19 @@ void Run_VerificationCodeInput() {
         
         bool isComplete = whatsappVerifier->processCodeEntry(detected);
         
-        // Update display
         String display = "Code: " + whatsappVerifier->getCodeDisplay();
         lcdDisplay->updateStatus(display.c_str());
         
         if (isComplete) {
-            // Verify the code
             if (whatsappVerifier->verifyCode()) {
                 Serial.println("[VERIFY] ✓ Identity verified via WhatsApp!");
                 lcdDisplay->updateStatus("Verified! ✓");
                 
-                // Here you can set a flag for verified user
+                // Here we can set a flag for verified user
                 // isUserVerified = true;
                 
                 delay(3000);
                 
-                // Show personalized greeting
                 lcdDisplay->updateStatus("Welcome Back!");
                 delay(2000);
             } else {
@@ -407,7 +366,6 @@ void Run_VerificationCodeInput() {
                     lcdDisplay->updateStatus("Max attempts!");
                     delay(3000);
                     
-                    // Cleanup and return
                     dtmfDetector->freeBuffer();
                     verificationInitialized = false;
                     m_states = START_WAKE_WORD_STATE;
@@ -430,7 +388,6 @@ void Run_VerificationCodeInput() {
         }
     }
     
-    // Blink cursor on display for better UX
     if (millis() - lastBlinkTime > 500) {
         showCursor = !showCursor;
         String display = "Code: " + whatsappVerifier->getCodeDisplay();
@@ -443,7 +400,7 @@ void Run_VerificationCodeInput() {
 }
 
 void Run_Wit() {
-    // Update LCD status
+    
     lcdDisplay->updateStatus("Listening...");
     
     // Allocate only ringBuffer1 for Wit.ai (3 seconds)
@@ -492,29 +449,28 @@ void Run_WakeWord() {
         Serial.print(score * 100, 1);
         Serial.print("%");
         
-        if (score > 0.8) {
+        if (score > 0.95) {
             Serial.println(" 😊 WAKE WORD DETECTED!");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_DETECTED);
-            delay(500);  // Show detection briefly
+            delay(500);  
             
-            continuousRecording = false;  // Stop continuous recording
+            continuousRecording = false;  
             if (!Run_VerifyLaser()) {
                 // Attack detected - restart wake word detection
                 lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_LASER_ALERT);
                 Serial.println("Restarting wake word detection...");
-                delay(2000);  // Show alert for 2 seconds
+                delay(2000);  
                 continuousRecording = true;
                 acknowledgeData();
                 startRecording();
                 lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_WAITING);
                 return;  
             }
-            freeBuffers();  // Free wake word buffers
+            freeBuffers();  
             startRecording_wit();
             m_states = WIT_STATE;
         } else {
             Serial.println(" ❌ Not detected");
-            // Auto-restart recording for next attempt
             if (continuousRecording && !shouldRecord) {
                 startRecording();
             }
@@ -563,7 +519,7 @@ void Run_WifiConnectionCheck(){
     static bool wasConnected = false;
     
     if (WiFi.status() != WL_CONNECTED) {
-        if (wasConnected) {  // Only show message if we were previously connected
+        if (wasConnected) {  
             Serial.println("WiFi disconnected! Reconnecting...");
             lcdDisplay->updateStatus("WiFi Lost!");
             wasConnected = false;

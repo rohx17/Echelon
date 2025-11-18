@@ -10,7 +10,7 @@
 #include "tensorflow/lite/version.h"
 
 // Larger arena for CNN model
-const int kArenaSize = 6000;
+const int kArenaSize = 20000;
 
 NeuralNetwork::NeuralNetwork() {
     m_error_reporter = new tflite::MicroErrorReporter();
