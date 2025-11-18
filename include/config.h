@@ -5,9 +5,15 @@
 #define CONFIG_H
 
 // WiFi Configuration
-#define WIFI_SSID "RedOrange789"
-#define WIFI_PASSWORD "$JapanParis"
+#define WIFI_SSID "RomseySt"
+#define WIFI_PASSWORD "123AppleMango"
 
+#define WHATSAPP_PHONE_NUMBER "+18577075157"  // Your WhatsApp number (with country code, no spaces)
+#define WHATSAPP_API_KEY "3734632"  
+#define VERIFICATION_CODE_TIMEOUT 300000
+
+// Maximum verification attempts
+#define MAX_VERIFICATION_ATTEMPTS 3
 // Wit.ai Configuration
 // Get your token from https://wit.ai/apps
 // 1. Create a new app on wit.ai

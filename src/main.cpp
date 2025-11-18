@@ -13,11 +13,13 @@
 #include "LcdTimeDisplay.h"
 #include "DTMFDetector.h"  
 #include "main.h"
+#include "WhatsAppVerification.h"
 
 VoiceDetector* detector;
 LaserAttackDetector* laserDetector;
 LcdTimeDisplay* lcdDisplay;
 DTMFDetector* dtmfDetector;  // DTMF detector instance
+WhatsAppVerification* whatsappVerifier;
 
 enum MainStates{
     WIFI_CONNECT,
@@ -26,6 +28,7 @@ enum MainStates{
     WIT_STATE,
     PROCESS_INTENT,
     DTMF_INPUT_STATE,  // New state for DTMF input
+    VERIFY_CODE_INPUT_STATE, 
 };
 
 MainStates m_states;
@@ -40,6 +43,7 @@ void Run_Cleanup();
 void Run_DTMFInput();  // New function for DTMF handling
 void connectWiFi();
 void handleIntentProcessing();
+void Run_VerificationCodeInput();
 
 void setup() {
     Serial.begin(115200);  // Changed to match DTMF requirements
@@ -75,6 +79,16 @@ void setup() {
     MIC_setup();
     checkMemory("After MIC setup");
     lcdDisplay->updateStatus("Mic OK");
+    delay(500);
+
+    whatsappVerifier = new WhatsAppVerification();
+    whatsappVerifier->init(
+        WHATSAPP_PHONE_NUMBER,  // Your WhatsApp phone number (with country code)
+        WHATSAPP_API_KEY        // Your CallMeBot API key
+    );
+    
+    Serial.println("WhatsApp verification initialized");
+    lcdDisplay->updateStatus("WhatsApp OK");
     delay(500);
 
     m_states = WIFI_CONNECT;
@@ -118,6 +132,10 @@ void loop() {
             
         case DTMF_INPUT_STATE:
             Run_DTMFInput();
+            break;
+
+        case VERIFY_CODE_INPUT_STATE:
+            Run_VerificationCodeInput();
             break;
         
         default:
@@ -250,9 +268,33 @@ void handleIntentProcessing() {
             Serial.println("🔍 Processing VERIFY ME command");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_VERIFYING);
             
-            // Simulate verification process
-            delay(1500);
-            m_states = START_WAKE_WORD_STATE;
+            // Generate and send verification code via WhatsApp
+            Serial.println("[VERIFY] Sending verification code via WhatsApp...");
+            lcdDisplay->updateStatus("Sending code...");
+            
+            if (whatsappVerifier->generateAndSendCode()) {
+                Serial.println("[VERIFY] WhatsApp message sent successfully!");
+                lcdDisplay->updateStatus("Check WhatsApp!");
+                delay(2500);
+                
+                // Show instruction
+                lcdDisplay->updateStatus("Enter 4 digits");
+                delay(2000);
+                
+                // Transition to code input state
+                m_states = VERIFY_CODE_INPUT_STATE;
+            } else {
+                Serial.println("[VERIFY] Failed to send WhatsApp message!");
+                Serial.println("[VERIFY] Check your CallMeBot API key and phone number");
+                lcdDisplay->updateStatus("WhatsApp Failed!");
+                delay(3000);
+                
+                // Show help message
+                lcdDisplay->updateStatus("Check API key");
+                delay(2000);
+                
+                m_states = START_WAKE_WORD_STATE;
+            }
             break;
         
         case SET_REMINDER:
@@ -272,6 +314,131 @@ void handleIntentProcessing() {
             delay(2000);
             m_states = START_WAKE_WORD_STATE;
             break;
+    }
+}
+// Add new function for verification code input
+void Run_VerificationCodeInput() {
+    static bool verificationInitialized = false;
+    static unsigned long lastUpdateTime = 0;
+    static unsigned long lastBlinkTime = 0;
+    static bool showCursor = true;
+    static int attemptCount = 0;
+    const int MAX_ATTEMPTS = 3;
+    
+    if (!verificationInitialized) {
+        // Free any existing buffers
+        freeBuffers();
+        checkMemory("After freeing buffers for verification");
+        
+        // Allocate DTMF buffer
+        if (!dtmfDetector->allocateBuffer()) {
+            Serial.println("[VERIFY] Failed to allocate DTMF buffer!");
+            lcdDisplay->updateStatus("Buffer Error!");
+            delay(2000);
+            m_states = START_WAKE_WORD_STATE;
+            return;
+        }
+        
+        // Calibrate DTMF detector
+        dtmfDetector->calibrateDCOffset(micPin1);
+        
+        // Reset code entry
+        whatsappVerifier->resetCodeEntry();
+        
+        // Display waiting for code
+        String display = "Code: " + whatsappVerifier->getCodeDisplay();
+        lcdDisplay->updateStatus(display.c_str());
+        
+        verificationInitialized = true;
+        attemptCount = 0;
+        
+        Serial.println("\n[VERIFY] Ready for verification code input:");
+        Serial.println("  Enter 4-digit code from WhatsApp");
+        Serial.println("  C: Confirm");
+        Serial.println("  D: Backspace");
+        Serial.println("  Waiting for DTMF tones...");
+    }
+    
+    // Check for code expiration
+    if (whatsappVerifier->isCodeExpired()) {
+        Serial.println("[VERIFY] Code expired!");
+        lcdDisplay->updateStatus("Code Expired!");
+        delay(2000);
+        
+        // Cleanup and return to wake word
+        dtmfDetector->freeBuffer();
+        verificationInitialized = false;
+        m_states = START_WAKE_WORD_STATE;
+        return;
+    }
+    
+    // Detect DTMF input
+    char detected = dtmfDetector->recordAndDetect(micPin1);
+    
+    if (detected != '\0') {
+        Serial.printf("[VERIFY] DTMF Detected: %c\n", detected);
+        
+        bool isComplete = whatsappVerifier->processCodeEntry(detected);
+        
+        // Update display
+        String display = "Code: " + whatsappVerifier->getCodeDisplay();
+        lcdDisplay->updateStatus(display.c_str());
+        
+        if (isComplete) {
+            // Verify the code
+            if (whatsappVerifier->verifyCode()) {
+                Serial.println("[VERIFY] ✓ Identity verified via WhatsApp!");
+                lcdDisplay->updateStatus("Verified! ✓");
+                
+                // Here you can set a flag for verified user
+                // isUserVerified = true;
+                
+                delay(3000);
+                
+                // Show personalized greeting
+                lcdDisplay->updateStatus("Welcome Back!");
+                delay(2000);
+            } else {
+                attemptCount++;
+                Serial.printf("[VERIFY] ✗ Wrong code! Attempt %d/%d\n", 
+                             attemptCount, MAX_ATTEMPTS);
+                
+                if (attemptCount >= MAX_ATTEMPTS) {
+                    lcdDisplay->updateStatus("Max attempts!");
+                    delay(3000);
+                    
+                    // Cleanup and return
+                    dtmfDetector->freeBuffer();
+                    verificationInitialized = false;
+                    m_states = START_WAKE_WORD_STATE;
+                    return;
+                } else {
+                    lcdDisplay->updateStatus("Wrong! Try again");
+                    delay(2000);
+                    whatsappVerifier->resetCodeEntry();
+                    display = "Code: " + whatsappVerifier->getCodeDisplay();
+                    lcdDisplay->updateStatus(display.c_str());
+                    return;  // Don't exit, allow retry
+                }
+            }
+            
+            // Cleanup after verification (success or max attempts)
+            dtmfDetector->freeBuffer();
+            verificationInitialized = false;
+            checkMemory("After verification cleanup");
+            m_states = START_WAKE_WORD_STATE;
+        }
+    }
+    
+    // Blink cursor on display for better UX
+    if (millis() - lastBlinkTime > 500) {
+        showCursor = !showCursor;
+        String display = "Code: " + whatsappVerifier->getCodeDisplay();
+        if (showCursor && !whatsappVerifier->isCodeComplete()) {
+            display += "_";
+        }
+        lcdDisplay->updateStatus(display.c_str());
+        lastBlinkTime = millis();
     }
 }
 
