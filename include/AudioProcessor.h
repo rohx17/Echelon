@@ -1,5 +1,5 @@
 // ============================================================================
-// AudioProcessor.h - Updated for int16_t input
+// AudioProcessor.h - Feature Extraction
 // ============================================================================
 #ifndef AUDIO_PROCESSOR_H
 #define AUDIO_PROCESSOR_H
@@ -7,7 +7,7 @@
 #include <Arduino.h>
 #include <math.h>
 
-// MFCC parameters matching Python training
+// MFCC parameters matching Model training
 const int N_FFT = 256;
 const int HOP_LENGTH = 200;
 const int FFT_BINS = 129;  // N_FFT/2 + 1
@@ -29,7 +29,7 @@ private:
 public:
     AudioProcessor();
     
-    // Updated to accept int16_t directly (matching ESP32 mic format)
+    // Accepts int16_t directly (matching ESP32 mic format)
     void extractMFCC(const int16_t* audio, int length, float mfcc_features[][N_MFCC]);
 };
 

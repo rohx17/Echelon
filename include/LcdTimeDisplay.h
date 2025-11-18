@@ -21,8 +21,8 @@
 
 // NTP Settings
 #define NTP_SERVER "pool.ntp.org"
-#define UTC_OFFSET_SEC -18000  // Change this to your timezone offset in seconds
-// Examples: EST = -18000, PST = -28800, CET = 3600
+#define UTC_OFFSET_SEC -18000  
+// EST = -18000, PST = -28800, CET = 3600
 
 class LcdTimeDisplay {
 private:
@@ -67,7 +67,6 @@ public:
     static const char* STATUS_SET_REMINDER;
 };
 
-    // Status messages for different states (declarations only)
     static const char* STATUS_WIFI_CONNECTING;
     static const char* STATUS_WIFI_CONNECTED;
     static const char* STATUS_INITIALIZING;

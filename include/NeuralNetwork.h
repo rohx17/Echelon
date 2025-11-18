@@ -1,6 +1,6 @@
 
 // ============================================================================
-// NeuralNetwork.h - Updated for voice model
+// NeuralNetwork.h
 // ============================================================================
 #ifndef __NeuralNetwork__
 #define __NeuralNetwork__

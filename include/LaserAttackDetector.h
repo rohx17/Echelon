@@ -1,5 +1,5 @@
 // ============================================================================
-// LaserAttackDetector.h - TUNED VERSION
+// LaserAttackDetector.h
 // ============================================================================
 #ifndef LASER_ATTACK_DETECTOR_H
 #define LASER_ATTACK_DETECTOR_H
@@ -31,7 +31,7 @@ public:
         int16_t minWindowCorr;
     };
     
-    // Calibration function - call this with normal audio
+    // Calibration function
     void calibrate(int16_t* buf1, int16_t* buf2, size_t bufferSize);
     
     DetectionResult detectAttack(int16_t* pitchBuffer1, int16_t* pitchBuffer2, size_t bufferSize);

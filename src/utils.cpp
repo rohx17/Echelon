@@ -1,7 +1,10 @@
+// ============================================================================
+// Utils.cpp - memory utility
+// ============================================================================
 #include <Arduino.h>
 #include "utils.h"
 
-// Add this at the top of main.cpp after includes
+
 void checkMemory(const char* location) {
   Serial.printf("[MEMORY] %s - Free Heap: %d bytes, Min Free: %d bytes\n", 
                 location, 

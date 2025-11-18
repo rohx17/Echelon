@@ -1,12 +1,11 @@
 // ============================================================================
-// DTMFDetector.h - DTMF Detection Module
+// DTMFDetector.h - DTMF Detection Module (Goertzel Algorithm)
 // ============================================================================
 #ifndef DTMF_DETECTOR_H
 #define DTMF_DETECTOR_H
 
 #include <Arduino.h>
 
-// DTMF Detection Configuration
 #define DTMF_SAMPLE_RATE 8000
 #define DTMF_BUFFER_SIZE 800      // Dynamic buffer size
 #define DTMF_DETECTION_THRESHOLD 10

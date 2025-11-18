@@ -37,7 +37,7 @@ NeuralNetwork::NeuralNetwork() {
     m_resolver->AddQuantize();
     m_resolver->AddDequantize();
     m_resolver->AddMean();      // For GlobalAveragePooling2D
-    m_resolver->AddReshape();   // May be needed
+    m_resolver->AddReshape();   
     
     m_interpreter = new tflite::MicroInterpreter(
         m_model, *m_resolver, m_tensor_arena, kArenaSize, m_error_reporter);
@@ -62,7 +62,6 @@ NeuralNetwork::NeuralNetwork() {
     TF_LITE_REPORT_ERROR(m_error_reporter, "\n");
     
     // Expected: [1, 79, 10, 1] for new model
-    // or [1, 79, 10] for old model
     if (input->dims->size == 4) {
         TF_LITE_REPORT_ERROR(m_error_reporter, "Model expects 4D input (with channel)\n");
     } else if (input->dims->size == 3) {

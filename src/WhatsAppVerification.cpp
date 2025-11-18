@@ -45,7 +45,7 @@ bool WhatsAppVerification::generateAndSendCode() {
 bool WhatsAppVerification::sendWhatsAppMessage(const String& message) {
     HTTPClient http;
     WiFiClientSecure client;
-    client.setInsecure(); // For simplicity - CallMeBot uses HTTPS
+    client.setInsecure(); // CallMeBot uses HTTPS
     
     // Build CallMeBot URL
     String url = "https://api.callmebot.com/whatsapp.php";
@@ -70,14 +70,14 @@ bool WhatsAppVerification::sendWhatsAppMessage(const String& message) {
     if (httpCode == 200) {
         // CallMeBot returns "SUCCESS" in the response body when successful
         if (response.indexOf("SUCCESS") != -1 || response.indexOf("Message queued") != -1) {
-            Serial.println("[WhatsApp] ✓ Message sent successfully!");
+            Serial.println("[WhatsApp] ✅ Message sent successfully!");
             return true;
         } else {
-            Serial.println("[WhatsApp] ✗ Message failed - check API key");
+            Serial.println("[WhatsApp] ❌ Message failed - check API key");
             return false;
         }
     } else {
-        Serial.printf("[WhatsApp] ✗ HTTP Error: %d\n", httpCode);
+        Serial.printf("[WhatsApp] ❌ HTTP Error: %d\n", httpCode);
         return false;
     }
 }

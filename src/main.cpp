@@ -207,41 +207,41 @@ void handleIntentProcessing() {
     switch(p_states)
     {
         case EMPTY:
-            Serial.println("📊 Nothing to process...");
+            Serial.println("Nothing to process...");
             lcdDisplay->updateStatus("Empty");
             delay(2000);
             m_states = START_WAKE_WORD_STATE;
             break;
             
         case MORNING_PILL:
-            Serial.println("📊 Processing MORNING PILL reminder");
+            Serial.println("Processing MORNING PILL reminder");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_MORNING_PILL);
             
             // Simulate processing
             delay(2000);
             
             lcdDisplay->updateStatus("Pill Set: AM");
-            Serial.println("✓ Morning pill reminder has been set");
+            Serial.println("Morning pill reminder has been set");
             delay(2000);
             
             m_states = START_WAKE_WORD_STATE;
             break;
         
         case EVENING_PILL:
-            Serial.println("🌙 Processing EVENING PILL reminder");
+            Serial.println("Processing EVENING PILL reminder");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_EVENING_PILL);
         
             delay(2000);
             
             lcdDisplay->updateStatus("Pill Set: PM");
-            Serial.println("✓ Evening pill reminder has been set");
+            Serial.println("Evening pill reminder has been set");
             delay(2000);
             
             m_states = START_WAKE_WORD_STATE;
             break;
         
         case VERIFY_ME:
-            Serial.println("🔍 Processing VERIFY ME command");
+            Serial.println("Processing VERIFY ME command");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_VERIFYING);
             
             Serial.println("[VERIFY] Sending verification code via WhatsApp...");
@@ -270,7 +270,7 @@ void handleIntentProcessing() {
             break;
         
         case SET_REMINDER:
-            Serial.println("⏰ Processing SET REMINDER command");
+            Serial.println("Processing SET REMINDER command");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_SET_REMINDER);
             
             delay(1000);
@@ -280,7 +280,7 @@ void handleIntentProcessing() {
             break;
         
         default:
-            Serial.println("⚠️ Unknown intent - returning to wake word");
+            Serial.println("Unknown intent - returning to wake word");
             lcdDisplay->updateStatus("Unknown Cmd");
             delay(2000);
             m_states = START_WAKE_WORD_STATE;
@@ -415,12 +415,12 @@ void Run_Wit() {
     
     if (WIT_loop()) {
         WIT_acknowledgeData();
-        freeBuffers();  // Free Wit.ai buffer
+        freeBuffers();
         m_states = PROCESS_INTENT;
         Serial.println("\nReady to process");
         lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_INTENT_READY);
         checkMemory("After Wit.ai processing");
-        delay(1500);  // Show status briefly
+        delay(1500);
     }
 }
 
@@ -487,18 +487,18 @@ bool Run_VerifyLaser() {
     
     // Auto-calibrate on first successful wake word
     if (firstRun) {
-        Serial.println("\n📊 First wake word - calibrating detector...");
+        Serial.println("\nFirst wake word - calibrating detector...");
         lcdDisplay->updateStatus("Calibrating...");
         laserDetector->calibrate(pitchBuffer1, pitchBuffer2, BUFFER_SIZE);
         firstRun = false;
         
         // On first run, assume it's legitimate (for calibration)
-        Serial.println("✅ Calibration complete - proceeding normally");
+        Serial.println("Calibration complete - proceeding normally");
         delay(1000);
         return true;
     }
     
-    Serial.println("\n🔍 Checking for laser attacks...");
+    Serial.println("\nChecking for laser attacks...");
     
     LaserAttackDetector::DetectionResult result = 
         laserDetector->detectAttack(pitchBuffer1, pitchBuffer2, BUFFER_SIZE);

@@ -85,7 +85,6 @@ bool WIT_loop() {
 
 
 void WIT_acknowledgeData() {
-  // Call this after you've used the pitch buffer data
   dataReadyToConsume_wit = false;
 }
 
@@ -196,7 +195,7 @@ void sendToWitAi() {
   delete wifiClient;
   wifiClient = nullptr;
 }
-// Updated parseWitAiResponse() function to detect intents and set p_states
+
 void parseWitAiResponse() {
   // Read HTTP status and headers
   int status = -1;
@@ -244,7 +243,7 @@ void parseWitAiResponse() {
     DeserializationError error = deserializeJson(doc, jsonResponse);
     
     if (error) {
-      Serial.printf("[Wit.ai] ✗ JSON parsing failed: %s\n", error.c_str());
+      Serial.printf("[Wit.ai] ❌ JSON parsing failed: %s\n", error.c_str());
       return;
     }
     
@@ -270,7 +269,7 @@ void parseWitAiResponse() {
           p_states = MORNING_PILL;
           intentDetected = true;
           detectedIntent = "Morning Pill";
-          Serial.println("✓ Detected: MORNING PILL command");
+          Serial.println("✅ Detected: MORNING PILL command");
         }
       }
       
@@ -281,7 +280,7 @@ void parseWitAiResponse() {
           p_states = EVENING_PILL;
           intentDetected = true;
           detectedIntent = "Evening Pill";
-          Serial.println("✓ Detected: EVENING PILL command");
+          Serial.println("✅ Detected: EVENING PILL command");
         }
       }
       
@@ -292,7 +291,7 @@ void parseWitAiResponse() {
           p_states = SET_REMINDER;
           intentDetected = true;
           detectedIntent = "Set Reminder";
-          Serial.println("✓ Detected: SET REMINDER command");
+          Serial.println("✅ Detected: SET REMINDER command");
         }
       }
       
@@ -305,7 +304,7 @@ void parseWitAiResponse() {
             p_states = VERIFY_ME;
             intentDetected = true;
             detectedIntent = "Verify Me";
-            Serial.println("✓ Detected: VERIFY ME command");
+            Serial.println("✅ Detected: VERIFY ME command");
           }
         }
       }
@@ -323,7 +322,6 @@ void parseWitAiResponse() {
       }
     }
     
-    // Alternative: Check text directly if no entity match
     if (!intentDetected && text) {
       String textStr = String(text);
       textStr.toLowerCase();
@@ -332,25 +330,25 @@ void parseWitAiResponse() {
         p_states = MORNING_PILL;
         intentDetected = true;
         detectedIntent = "Morning Pill";
-        Serial.println("✓ Detected from text: MORNING PILL");
+        Serial.println("✅ Detected from text: MORNING PILL");
       }
       else if (textStr.indexOf("evening") >= 0 && textStr.indexOf("pill") >= 0) {
         p_states = EVENING_PILL;
         intentDetected = true;
         detectedIntent = "Evening Pill";
-        Serial.println("✓ Detected from text: EVENING PILL");
+        Serial.println("✅ Detected from text: EVENING PILL");
       }
       else if (textStr.indexOf("reminder") >= 0 || textStr.indexOf("remind") >= 0) {
         p_states = SET_REMINDER;
         intentDetected = true;
         detectedIntent = "Set Reminder";
-        Serial.println("✓ Detected from text: SET REMINDER");
+        Serial.println("✅ Detected from text: SET REMINDER");
       }
       else if (textStr.indexOf("verify") >= 0) {
         p_states = VERIFY_ME;
         intentDetected = true;
         detectedIntent = "Verify Me";
-        Serial.println("✓ Detected from text: VERIFY ME");
+        Serial.println("✅ Detected from text: VERIFY ME");
       }
     }
     
@@ -383,13 +381,13 @@ void parseWitAiResponse() {
     Serial.println("====================================");
     
     if (intentDetected) {
-      Serial.printf("\n★ INTENT READY: %s\n", detectedIntent.c_str());
+      Serial.printf("\n⭐ INTENT READY: %s\n", detectedIntent.c_str());
     } else {
-      Serial.println("\n✗ No recognized intent detected");
+      Serial.println("\n❌ No recognized intent detected");
     }
     
   } else {
-    Serial.printf("[Wit.ai] ✗ Error: HTTP %d\n", status);
+    Serial.printf("[Wit.ai] ❌ Error: HTTP %d\n", status);
     
     // Try to read error response
     if (wifiClient->available()) {

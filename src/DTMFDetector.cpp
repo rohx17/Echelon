@@ -54,12 +54,12 @@ DTMFDetector::~DTMFDetector() {
 
 bool DTMFDetector::allocateBuffer() {
     if (bufferAllocated) {
-        return true; // Already allocated
+        return true;
     }
     
     checkMemory("Before DTMF buffer allocation");
     
-    // Use regular heap allocation instead of PSRAM
+    // Use regular heap allocation instead of PSRAM (no PSRAM in ESP32S3)
     audioBuffer = (int16_t*)malloc(DTMF_BUFFER_SIZE * sizeof(int16_t));
     
     if (audioBuffer) {

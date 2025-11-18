@@ -1,10 +1,12 @@
+// ============================================================================
 // LcdTimeDisplay.cpp
+// ============================================================================
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include "LcdTimeDisplay.h"
 
-// Static member definitions
+
 const char* LcdTimeDisplay::STATUS_WIFI_CONNECTING = "WiFi Connect...";
 const char* LcdTimeDisplay::STATUS_WIFI_CONNECTED = "WiFi OK";
 const char* LcdTimeDisplay::STATUS_INITIALIZING = "Initializing...";

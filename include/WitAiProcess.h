@@ -9,10 +9,10 @@ extern volatile bool witBuffersAllocated;
 
 enum ProcessStates{
     EMPTY,
-    SET_REMINDER,       //LCD display - Connecting ... / Connected
-    VERIFY_ME,          //LCD display  - Initializing Recording
-    MORNING_PILL,       //LCD display  - Waiting... / Detected
-    EVENING_PILL,       //LCD display  - POST WIT / 
+    SET_REMINDER,       
+    VERIFY_ME,          
+    MORNING_PILL,       
+    EVENING_PILL,       
 };
 
 extern ProcessStates p_states;

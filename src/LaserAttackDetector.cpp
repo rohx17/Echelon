@@ -1,10 +1,11 @@
 // ============================================================================
-// LaserAttackDetector.cpp - TUNED VERSION
+// LaserAttackDetector.cpp
 // ============================================================================
 #include "LaserAttackDetector.h"
+
 // Calibration function - learns your mic characteristics
 void LaserAttackDetector::calibrate(int16_t* buf1, int16_t* buf2, size_t bufferSize) {
-    Serial.println("\n📊 Calibrating laser detector...");
+    Serial.println("\nCalibrating laser detector...");
     
     // Calculate baseline correlation for your mics
     baselineCorrelation = calculateCorrelationQ8(buf1, buf2, bufferSize);
@@ -66,7 +67,7 @@ LaserAttackDetector::DetectionResult LaserAttackDetector::detectAttack(
     
     result.anomalyRatio = (anomalousWindows * 100) / windows;
     
-    // 3. ADJUSTED Detection Logic for your hardware
+    // 3. ADJUSTED Detection Logic for the hardware
     
     // Use relative drop from baseline if calibrated
     if (isCalibrated) {

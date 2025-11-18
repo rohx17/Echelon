@@ -26,7 +26,6 @@ volatile bool dataReadyToConsume = false;
 
 void stopRecording();
 void applyPitchShift();
-void applySimpleDownsample();
 void sendBufferData();
 
 
@@ -97,10 +96,6 @@ bool allocateWitBuffers() {
 }
 
 
-
-
-
-
 void MIC_setup() {
   
   analogReadResolution(12);
@@ -126,6 +121,7 @@ bool MIC_loop() {
   bool isWakeWordMode = (ringBuffer2 != nullptr && pitchBuffer1 != nullptr && pitchBuffer2 != nullptr);
   
 
+  //for debugging
   if (Serial.available() > 0) {
     char command = Serial.read();
     if (command == 'S' || command == 's') {
@@ -166,7 +162,7 @@ bool MIC_loop() {
     // If buffer is full, process and send data
     if (bufferReady) {
       applyPitchShift();
-      // sendBufferData();
+      // sendBufferData(); //for debugging
       bufferReady = false;
       dataReadyToConsume = true; 
     }
@@ -177,7 +173,6 @@ bool MIC_loop() {
 
 
 void acknowledgeData() {
-  // Call this after you've used the pitch buffer data
   dataReadyToConsume = false;
 }
 
@@ -236,39 +231,6 @@ void applyPitchShift() {
   for (int i = outputSamples; i < BUFFER_SIZE; i++) {
     pitchBuffer1[i] = 0;
     pitchBuffer2[i] = 0;
-  }
-}
-
-// Alternative: Simple downsampling method (faster but lower quality)
-void applySimpleDownsample() {
-  const int DOWNSAMPLE_FACTOR = 2; // 2 = one octave down
-  
-  // Clear buffers
-  memset(pitchBuffer1, 0, BUFFER_SIZE * sizeof(int16_t));
-  memset(pitchBuffer2, 0, BUFFER_SIZE * sizeof(int16_t));
-  
-  // Downsample by averaging
-  for (int i = 0; i < BUFFER_SIZE / DOWNSAMPLE_FACTOR; i++) {
-    int32_t sum1 = 0, sum2 = 0;
-    for (int j = 0; j < DOWNSAMPLE_FACTOR; j++) {
-      int srcIdx = i * DOWNSAMPLE_FACTOR + j;
-      if (srcIdx < BUFFER_SIZE) {
-        sum1 += ringBuffer1[srcIdx];
-        sum2 += ringBuffer2[srcIdx];
-      }
-    }
-    
-    // Store averaged sample and duplicate to maintain timing
-    int16_t avg1 = sum1 / DOWNSAMPLE_FACTOR;
-    int16_t avg2 = sum2 / DOWNSAMPLE_FACTOR;
-    
-    for (int j = 0; j < DOWNSAMPLE_FACTOR; j++) {
-      int dstIdx = i * DOWNSAMPLE_FACTOR + j;
-      if (dstIdx < BUFFER_SIZE) {
-        pitchBuffer1[dstIdx] = avg1;
-        pitchBuffer2[dstIdx] = avg2;
-      }
-    }
   }
 }
 
