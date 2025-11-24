@@ -295,6 +295,17 @@ void parseWitAiResponse() {
         }
       }
       
+      // Check for defence entity
+      if (!intentDetected && entities.containsKey("defence:defence")) {
+        JsonArray remindArray = entities["defence:defence"].as<JsonArray>();
+        if (remindArray.size() > 0) {
+          p_states = STOP_DEFENCE;
+          intentDetected = true;
+          detectedIntent = "Stop defending";
+          Serial.println("✅ Detected: STOP DEFENDING command");
+        }
+      }
+
       // Check for verify entity (using wit$reminder as shown in your example)
       if (!intentDetected && entities.containsKey("wit$reminder:reminder")) {
         JsonArray verifyArray = entities["wit$reminder:reminder"].as<JsonArray>();
@@ -344,6 +355,14 @@ void parseWitAiResponse() {
         detectedIntent = "Set Reminder";
         Serial.println("✅ Detected from text: SET REMINDER");
       }
+
+      if (textStr.indexOf("defending") >= 0 && textStr.indexOf("stop") >= 0) {
+        p_states = STOP_DEFENCE;
+        intentDetected = true;
+        detectedIntent = "Stop defending";
+        Serial.println("✅ Detected: STOP DEFENDING command");
+      }
+
       else if (textStr.indexOf("verify") >= 0) {
         p_states = VERIFY_ME;
         intentDetected = true;

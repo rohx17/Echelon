@@ -12,7 +12,8 @@ enum ProcessStates{
     SET_REMINDER,       
     VERIFY_ME,          
     MORNING_PILL,       
-    EVENING_PILL,       
+    EVENING_PILL,
+    STOP_DEFENCE,      
 };
 
 extern ProcessStates p_states;

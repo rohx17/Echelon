@@ -21,6 +21,8 @@ LcdTimeDisplay* lcdDisplay;
 DTMFDetector* dtmfDetector;
 WhatsAppVerification* whatsappVerifier;
 
+bool defenceSet;
+
 enum MainStates{
     WIFI_CONNECT,
     START_WAKE_WORD_STATE,
@@ -43,6 +45,7 @@ void Run_Cleanup();
 void Run_DTMFInput();
 void Run_VerificationCodeInput();
 
+void wifiScanner();
 void connectWiFi();
 void handleIntentProcessing();
 
@@ -66,6 +69,7 @@ void setup() {
     
     laserDetector = new LaserAttackDetector();
     Serial.println("Laser attack detector initialized");
+    defenceSet = true;
     lcdDisplay->updateStatus("Security OK");
     delay(500);
     
@@ -279,6 +283,14 @@ void handleIntentProcessing() {
             m_states = DTMF_INPUT_STATE;
             break;
         
+        case STOP_DEFENCE:
+            Serial.println("Processing STOP DEFENCE command");
+            defenceSet = false;
+            lcdDisplay->updateStatus("No Security :(");
+            delay(2000);
+            m_states = START_WAKE_WORD_STATE;
+            break;
+        
         default:
             Serial.println("Unknown intent - returning to wake word");
             lcdDisplay->updateStatus("Unknown Cmd");
@@ -455,7 +467,7 @@ void Run_WakeWord() {
             delay(500);  
             
             continuousRecording = false;  
-            if (!Run_VerifyLaser()) {
+            if (!Run_VerifyLaser() && defenceSet) {
                 // Attack detected - restart wake word detection
                 lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_LASER_ALERT);
                 Serial.println("Restarting wake word detection...");
@@ -465,6 +477,10 @@ void Run_WakeWord() {
                 startRecording();
                 lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_WAITING);
                 return;  
+            }
+            else if(!Run_VerifyLaser() && !defenceSet){
+                lcdDisplay->updateStatus("Ok Attacker :(");
+                delay(1000);  
             }
             freeBuffers();  
             startRecording_wit();
@@ -532,10 +548,77 @@ void Run_WifiConnectionCheck(){
     }
 }
 
+void wifiScanner(){
+    Serial.println("Scan start");
+ 
+    // WiFi.scanNetworks will return the number of networks found.
+    int n = WiFi.scanNetworks();
+    Serial.println("Scan done");
+    if (n == 0) {
+        Serial.println("no networks found");
+    } else {
+        Serial.print(n);
+        Serial.println(" networks found");
+        Serial.println("Nr | SSID                             | RSSI | CH | Encryption");
+        for (int i = 0; i < n; ++i) {
+            // Print SSID and RSSI for each network found
+            Serial.printf("%2d",i + 1);
+            Serial.print(" | ");
+            Serial.printf("%-32.32s", WiFi.SSID(i).c_str());
+            Serial.print(" | ");
+            Serial.printf("%4d", WiFi.RSSI(i));
+            Serial.print(" | ");
+            Serial.printf("%2d", WiFi.channel(i));
+            Serial.print(" | ");
+            switch (WiFi.encryptionType(i))
+            {
+            case WIFI_AUTH_OPEN:
+                Serial.print("open");
+                break;
+            case WIFI_AUTH_WEP:
+                Serial.print("WEP");
+                break;
+            case WIFI_AUTH_WPA_PSK:
+                Serial.print("WPA");
+                break;
+            case WIFI_AUTH_WPA2_PSK:
+                Serial.print("WPA2");
+                break;
+            case WIFI_AUTH_WPA_WPA2_PSK:
+                Serial.print("WPA+WPA2");
+                break;
+            case WIFI_AUTH_WPA2_ENTERPRISE:
+                Serial.print("WPA2-EAP");
+                break;
+            case WIFI_AUTH_WPA3_PSK:
+                Serial.print("WPA3");
+                break;
+            case WIFI_AUTH_WPA2_WPA3_PSK:
+                Serial.print("WPA2+WPA3");
+                break;
+            case WIFI_AUTH_WAPI_PSK:
+                Serial.print("WAPI");
+                break;
+            default:
+                Serial.print("unknown");
+            }
+            Serial.println();
+            delay(10);
+        }
+    }
+    Serial.println("");
+ 
+    // Delete the scan result to free memory for code below.
+    WiFi.scanDelete();
+}
+
 void connectWiFi() {
+    Serial.print("Scanning WiFi...");
+    lcdDisplay->updateStatus("Scanning WiFi...");
+    wifiScanner();
+
     Serial.print("Connecting to WiFi");
     lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_WIFI_CONNECTING);
-    
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     
     int attempts = 0;
