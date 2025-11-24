@@ -14,6 +14,7 @@
 #include "DTMFDetector.h"  
 #include "main.h"
 #include "WhatsAppVerification.h"
+#include "motor.h"
 
 VoiceDetector* detector;
 LaserAttackDetector* laserDetector;
@@ -94,6 +95,12 @@ void setup() {
     Serial.println("WhatsApp verification initialized");
     lcdDisplay->updateStatus("WhatsApp OK");
     delay(500);
+
+    MOTOR_setup();
+    Serial.println("Motor initialized");
+    lcdDisplay->updateStatus("Motor OK");
+    delay(500);
+    
 
     m_states = WIFI_CONNECT;
     delay(1000);
@@ -222,7 +229,7 @@ void handleIntentProcessing() {
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_MORNING_PILL);
             
             // Simulate processing
-            delay(2000);
+            handleMorningCommand();
             
             lcdDisplay->updateStatus("Pill Set: AM");
             Serial.println("Morning pill reminder has been set");
@@ -235,7 +242,7 @@ void handleIntentProcessing() {
             Serial.println("Processing EVENING PILL reminder");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_EVENING_PILL);
         
-            delay(2000);
+            handleNightCommand();
             
             lcdDisplay->updateStatus("Pill Set: PM");
             Serial.println("Evening pill reminder has been set");
