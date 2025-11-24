@@ -134,9 +134,9 @@ bool MIC_loop() {
   }
 
   // Auto-start recording if in continuous mode and not currently recording
-  if (continuousRecording && !shouldRecord && !bufferReady) {
-    startRecording();
-  }
+  // if (continuousRecording && !shouldRecord && !bufferReady) {
+  //   startRecording();
+  // }
   
   // If recording, fill ring buffer
   if (shouldRecord) {
@@ -162,7 +162,7 @@ bool MIC_loop() {
     // If buffer is full, process and send data
     if (bufferReady) {
       applyPitchShift();
-      // sendBufferData(); //for debugging
+      sendBufferData(); //for debugging
       bufferReady = false;
       dataReadyToConsume = true; 
     }

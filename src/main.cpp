@@ -468,36 +468,36 @@ void Run_WakeWord() {
         Serial.print(score * 100, 1);
         Serial.print("%");
         
-        if (score > 0.95) {
-            Serial.println(" 😊 WAKE WORD DETECTED!");
-            lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_DETECTED);
-            delay(500);  
+        // if (score > 0.95) {
+        //     Serial.println(" 😊 WAKE WORD DETECTED!");
+        //     lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_DETECTED);
+        //     delay(500);  
             
-            continuousRecording = false;  
-            if (!Run_VerifyLaser() && defenceSet) {
-                // Attack detected - restart wake word detection
-                lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_LASER_ALERT);
-                Serial.println("Restarting wake word detection...");
-                delay(2000);  
-                continuousRecording = true;
-                acknowledgeData();
-                startRecording();
-                lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_WAITING);
-                return;  
-            }
-            else if(!Run_VerifyLaser() && !defenceSet){
-                lcdDisplay->updateStatus("Ok Attacker :(");
-                delay(1000);  
-            }
-            freeBuffers();  
-            startRecording_wit();
-            m_states = WIT_STATE;
-        } else {
-            Serial.println(" ❌ Not detected");
-            if (continuousRecording && !shouldRecord) {
-                startRecording();
-            }
-        }
+        //     continuousRecording = false;  
+        //     if (!Run_VerifyLaser() && defenceSet) {
+        //         // Attack detected - restart wake word detection
+        //         lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_LASER_ALERT);
+        //         Serial.println("Restarting wake word detection...");
+        //         delay(2000);  
+        //         continuousRecording = true;
+        //         acknowledgeData();
+        //         startRecording();
+        //         lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_WAITING);
+        //         return;  
+        //     }
+        //     else if(!Run_VerifyLaser() && !defenceSet){
+        //         lcdDisplay->updateStatus("Ok Attacker :(");
+        //         delay(1000);  
+        //     }
+        //     freeBuffers();  
+        //     startRecording_wit();
+            m_states = WAKE_WORD_STATE;
+        // } else {
+        //     Serial.println(" ❌ Not detected");
+        //     if (continuousRecording && !shouldRecord) {
+        //         startRecording();
+        //     }
+        // }
         
         acknowledgeData();
     }
