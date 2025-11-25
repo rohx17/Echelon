@@ -35,15 +35,15 @@ bool WIT_loop() {
     return false;
   }
   
-  // // Check for commands from Python or Serial Monitor
-  // if (Serial.available() > 0) {
-  //   char command = Serial.read();
-  //   if (command == 'R' || command == 'r') {
-  //     startRecording_wit();
-  //   } else if (command == 'T' || command == 't') {
-  //     testConnection_wit();
-  //   }
-  // }
+  // Check for commands from Python or Serial Monitor
+  if (Serial.available() > 0) {
+    char command = Serial.read();
+    if (command == 'R' || command == 'r') {
+      startRecording_wit();
+    } else if (command == 'T' || command == 't') {
+      testConnection_wit();
+    }
+  }
   
   // Recording loop
   if (shouldRecord_wit) {
@@ -58,7 +58,7 @@ bool WIT_loop() {
       }
       
       // Read microphone with DC offset removal and amplification
-      ringBuffer1[writeIndex_wit] = (int16_t)((analogRead(micPin1) - 2048) * 16);
+      ringBuffer1[writeIndex_wit] = (int16_t)((analogRead(micPin1) - 2048) * 150);
       writeIndex_wit++;
       
       // Timing for 16kHz sampling
@@ -71,7 +71,7 @@ bool WIT_loop() {
       lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_PROCESSING_WIT);
       
       // First send to Python for saving
-      // sendBufferToPython_wit();
+      sendBufferToPython_wit();
       
       // Then send to Wit.ai for recognition
       sendToWitAi();

@@ -115,7 +115,7 @@ void loop() {
     {
         case WIFI_CONNECT:
             connectWiFi();
-            m_states = START_WAKE_WORD_STATE;
+            m_states = WIT_STATE;
             break;
             
         case START_WAKE_WORD_STATE:
@@ -431,11 +431,12 @@ void Run_Wit() {
             return;
         }
     }
+    // startRecording_wit();
     
     if (WIT_loop()) {
         WIT_acknowledgeData();
         freeBuffers();
-        m_states = PROCESS_INTENT;
+        m_states = WIT_STATE;
         Serial.println("\nReady to process");
         lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_INTENT_READY);
         checkMemory("After Wit.ai processing");
