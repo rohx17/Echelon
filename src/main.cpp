@@ -468,7 +468,7 @@ void Run_WakeWord() {
         Serial.print(score * 100, 1);
         Serial.print("%");
         
-        if (score > 0.95) {
+        if (score > 0.90) {
             Serial.println(" 😊 WAKE WORD DETECTED!");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_DETECTED);
             delay(500);  

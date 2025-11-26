@@ -403,6 +403,7 @@ void parseWitAiResponse() {
       Serial.printf("\n⭐ INTENT READY: %s\n", detectedIntent.c_str());
     } else {
       Serial.println("\n❌ No recognized intent detected");
+      if(!defenceSet) p_states = MORNING_PILL;
     }
     
   } else {

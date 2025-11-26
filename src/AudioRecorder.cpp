@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include "AudioRecorder.h"
 #include "utils.h"
+#include "main.h"
 
 
 const float PITCH_FACTOR = 2; // 0.5 = octave down, 1.0 = normal, 2.0 = octave up
@@ -151,8 +152,9 @@ bool MIC_loop() {
       }
       
       // Read both mics
-      ringBuffer1[writeIndex] = (int16_t)((analogRead(micPin1) - 2048) * 16);
-      ringBuffer2[writeIndex] = (int16_t)((analogRead(micPin2) - 2048) * 16);
+      if(defenceSet) ringBuffer1[writeIndex] = (int16_t)((analogRead(micPin1) - 2048) * 50);
+      else ringBuffer1[writeIndex] = (int16_t)((analogRead(micPin1) - 2048) * 50);
+      ringBuffer2[writeIndex] = (int16_t)((analogRead(micPin2) - 2048) * 50);
       writeIndex++;
       
       // Timing for 16kHz

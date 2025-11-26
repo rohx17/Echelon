@@ -6,5 +6,5 @@
 #include "LcdTimeDisplay.h"
 
 extern LcdTimeDisplay* lcdDisplay;
-
+extern bool defenceSet;
 #endif
