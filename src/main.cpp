@@ -23,6 +23,7 @@ DTMFDetector* dtmfDetector;
 WhatsAppVerification* whatsappVerifier;
 
 bool defenceSet;
+float confidence;
 
 enum MainStates{
     WIFI_CONNECT,
@@ -101,7 +102,6 @@ void setup() {
     lcdDisplay->updateStatus("Motor OK");
     delay(500);
     
-
     m_states = WIFI_CONNECT;
     delay(1000);
 }
@@ -467,8 +467,11 @@ void Run_WakeWord() {
         Serial.print("Detection Score: ");
         Serial.print(score * 100, 1);
         Serial.print("%");
+
+        if(defenceSet) confidence = 0.999f;
+        else confidence = 0.90f;
         
-        if (score > 0.90) {
+        if (score > confidence) {
             Serial.println(" 😊 WAKE WORD DETECTED!");
             lcdDisplay->updateStatus(LcdTimeDisplay::STATUS_DETECTED);
             delay(500);  
@@ -492,7 +495,11 @@ void Run_WakeWord() {
             freeBuffers();  
             startRecording_wit();
             m_states = WIT_STATE;
-        } else {
+        } 
+
+
+        
+        else {
             Serial.println(" ❌ Not detected");
             if (continuousRecording && !shouldRecord) {
                 startRecording();

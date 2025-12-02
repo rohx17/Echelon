@@ -19,10 +19,10 @@ const float DETECT_DISTANCE_CM = 40.0;
 
 
 // ---- Stepper pins (28BYJ-48 via ULN2003) ----
-const int IN1 = 37;
-const int IN2 = 36;
-const int IN3 = 35;
-const int IN4 = 0;
+const int IN1 = 17;
+const int IN2 = 18;
+const int IN3 = 8;
+const int IN4 = 3;
 
 // ---- Stepper state ----
 int stepIndex = 0;  

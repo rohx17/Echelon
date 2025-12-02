@@ -337,13 +337,13 @@ void parseWitAiResponse() {
       String textStr = String(text);
       textStr.toLowerCase();
       
-      if (textStr.indexOf("morning") >= 0 && textStr.indexOf("pill") >= 0) {
+      if (textStr.indexOf("morning") >= 0 /* && textStr.indexOf("pill") >= 0*/) {
         p_states = MORNING_PILL;
         intentDetected = true;
         detectedIntent = "Morning Pill";
         Serial.println("✅ Detected from text: MORNING PILL");
       }
-      else if (textStr.indexOf("evening") >= 0 && textStr.indexOf("pill") >= 0) {
+      else if (textStr.indexOf("evening") >= 0 /* && textStr.indexOf("pill") >= 0*/) {
         p_states = EVENING_PILL;
         intentDetected = true;
         detectedIntent = "Evening Pill";
@@ -403,7 +403,6 @@ void parseWitAiResponse() {
       Serial.printf("\n⭐ INTENT READY: %s\n", detectedIntent.c_str());
     } else {
       Serial.println("\n❌ No recognized intent detected");
-      if(!defenceSet) p_states = MORNING_PILL;
     }
     
   } else {
